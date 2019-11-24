@@ -137,9 +137,6 @@ class Model(tf.keras.Model):
 
 		
 
-		
-		
-
 def train(model, img_dir, train_img_names,img_to_encodings):
     num_inputs = len(train_img_names)
     steps = int(num_inputs/model.batch_size)
@@ -151,6 +148,7 @@ def train(model, img_dir, train_img_names,img_to_encodings):
         end = (i+1)*model.batch_size
         # now we load the actual content of the images, which is a huge amount of data
 		inputs, labels = get_data(img_dir, train_img_names[start:end],img_to_encodings)
+
 
 		with tf.GradientTape() as tape:
 			logits = model(inputs)
@@ -181,6 +179,7 @@ def test(model, img_dir, test_img_names, img_to_encodings):
     return sum(accu)/len(accu)
 
 
+
 def visualize_results(image_inputs):
     #todo
     pass
@@ -203,6 +202,7 @@ def main():
     #step3: test the model
     accuracy = test(model, 'sample_jpgs', test_img_names, img_to_encodings)
     print("========> Test Accuracy: %.4f" %accuracy)
+
 
 
 

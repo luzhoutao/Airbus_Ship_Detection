@@ -45,7 +45,7 @@ def get_data(img_dir, img_names, img_to_encodings):
     labels is a matrix of shape (9*batch size, 256, 256, 1)
     '''
 
-    print("======>read the number of images = ", len(img_names))
+    # print("======>read the number of images = ", len(img_names))
 
     images = []
     masks  = []
@@ -64,6 +64,7 @@ def get_data(img_dir, img_names, img_to_encodings):
         # mask = np.reshape(mask, [768,768, 1]) #todo: do we need this?
         masks.append(mask)
     masks = np.reshape(masks, (-1, 768, 768, 1))
+
 
     return (images, masks)
 
