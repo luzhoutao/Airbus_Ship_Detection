@@ -1,5 +1,5 @@
 import tensorflow as tf
-
+import numpy as np
 
 def IoU(probs, labels, eps=1e-6):
     '''
@@ -10,12 +10,26 @@ def IoU(probs, labels, eps=1e-6):
     :param labels: integer tensor, segmentation mask labels [batch_size x height x width]
     :return: IoU of each input image as a tensor [batch_size]
     '''
-    prediction = tf.cast(probs > 0.5, dtype=tf.dtypes.float32)
+    
+    # prediction = tf.cast(probs > 0.5, dtype=tf.dtypes.float32) 
+    # --(what are we trying to do here? I thought we should convert >0.5 to 1, but here this above line will convert all values to 0.0)
 
-    intersection = tf.reduce_sum(labels * prediction, axis=[1, 2])
-    union = tf.reduce_sum(prediction + labels, axis=[1, 2]) - intersection
-
+    # intersection = tf.reduce_sum(labels*predictions, axis=[1, 2])  --##stuck here , error: Could not find valid device for node.Node:{{node Mul}}
+    # union = tf.reduce_sum(prediction + labels, axis=[1, 2]) - intersection
+    # return (intersection + eps) / (union + eps)
+    
+    prediction = probs.numpy().copy()
+    prediction[prediction>0.5] = 1
+    prediction[prediction<=0.5] = 0
+    labels = np.reshape(labels.numpy(),-1)
+    prediction = np.reshape(prediction,-1)
+    
+    intersection = np.sum(np.multiply(labels,prediction)).mean()
+    union = np.sum(prediction + labels).mean()
     return (intersection + eps) / (union + eps)
+
+
+    
 
 
 def F2(probs,

@@ -14,7 +14,7 @@ def read_encodings(file_name):
                 img_to_encodings[jpg] = []
             img_to_encodings[jpg].append(encoding)
 
-    print("=====> read the number of encodings = ", len(img_to_encodings))
+    # print("=====> read the number of encodings = ", len(img_to_encodings))
     return img_to_encodings
 
 # masks will be memory intensive so use small batches
@@ -44,7 +44,7 @@ def get_data(images_file_path, encodings_file_path, num_examples):
     :return: a tuple (images, labels) - images is a matrix of shape (num_inputs, 256, 256, 3), 
     labels is a matrix of shape (num_inputs, 256, 256, 1)
     '''
-    print("======>read the number of images = ", num_examples)
+    print("======>read this number of images = ", num_examples)
     images = []
     masks  = []
     #step1: get all the image names: [store the image file names in a list as long as they are jpgs]
@@ -68,14 +68,16 @@ def get_data(images_file_path, encodings_file_path, num_examples):
         masks.append(mask)
     masks = np.reshape(masks, (-1, 768, 768, 1))
 
+    return (images, masks)
+
     #step4: divide each image (768, 768, 3) to 9 smaller images of shape (256, 256, 3), 
     # and divide each mask (768, 768, 1) to 9 smaller masks of shape (256, 256, 1).
-    images = np.reshape(images, (-1, 256, 256, 3)) #dtype = float
-    masks = np.reshape(masks, (-1, 256, 256, 1)) #dtype = uint8
-    assert(images.shape == (num_examples*9, 256, 256,3))
-    assert(masks.shape == (num_examples*9, 256, 256,1))
+    # images = np.reshape(images, (-1, 256, 256, 3)) #dtype = float
+    # masks = np.reshape(masks, (-1, 256, 256, 1)) #dtype = uint8
+    # assert(images.shape == (num_examples*9, 256, 256,3))
+    # assert(masks.shape == (num_examples*9, 256, 256,1))
 
-    return (images, masks)
+    
 
 
 

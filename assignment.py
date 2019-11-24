@@ -94,31 +94,36 @@ class Model(tf.keras.Model):
 		
 
 	def loss(self, logits, labels):
-		#todo: should we use this loss function? 
+		#todo: PLEASE CHECK THIS FUNCTION! when I test, the loss is not decreasing, please help debug!
+		#todo: should we use this loss function?  
 		labels = tf.dtypes.cast(labels, tf.float32)
 		logits = tf.dtypes.cast(logits, tf.float32)
-		loss = tf.nn.sigmoid_cross_entropy_with_logits(labels, logits)
+		# loss = tf.nn.sigmoid_cross_entropy_with_logits(labels, logits) 
+		loss = tf.keras.losses.binary_crossentropy(labels, logits, from_logits=True)
 		ave_loss = tf.reduce_mean(loss) 
 		return ave_loss
 
 
 	def accuracy(self, logits, labels):
 		#logits : numpy of shape=(num_examples, 256, 256, 1), dtype=float32
-
-		# iou = IoU(logits, labels, eps=1e-6)
-		# f2 = F2(logits, labels)
-		# print("======> IoU = ", iou)
-		# print("======> F2 = ", f2)
+		
+		lo1 = tf.reshape(logits, [-1,256,256])
+		la1 = tf.reshape(labels, [-1,256,256])
+		
+		iou = IoU(lo1, la1, eps=1e-6)
+		print("-> IoU = %3.8f" %iou)
+		
 
 		logits = np.reshape(logits, -1)
 		labels = np.reshape(labels, -1)
 
-		#below should work but cause weird errors: "assignment destination is read-only"
+		#below should work, but caused weird errors: "assignment destination is read-only"?? haven't figure out why, so rewrite using a slower way
 		# logits[logits>0.5] = 1 #meaning mask(i.e.,ship)   
 		# logits[logits<=0.5] = 0 #meaning background
 		# logits = logits.astype(int) #convert to int to compare with labels
 		
-		#below is slow, should optimize 
+
+		#below is slow, should optimize in the future
 		logit_copy = []
 		for logit in logits:
 			if (logit > 0.5):
@@ -127,8 +132,7 @@ class Model(tf.keras.Model):
 				logit_copy.append(0)
 		logit_copy = np.reshape(logit_copy, -1)
 
-	
-		accuracy = np.mean(logit_copy == labels) #why this sometimes gets accuracy value > 1? 
+		accuracy = np.mean(logit_copy == labels) 
 		return accuracy
 
 		
@@ -138,13 +142,13 @@ class Model(tf.keras.Model):
 
 def train(model, train_inputs, train_labels):
 
-	train_inputs = tf.image.random_flip_left_right(train_inputs)
+	# train_inputs = tf.image.random_flip_left_right(train_inputs)
 
 	(num_inputs, _,_,_) = train_inputs.shape
-	indices = tf.range(num_inputs)
-	indices = tf.random.shuffle(indices)
-	train_inputs = tf.gather(train_inputs, indices)
-	train_labels = tf.gather(train_labels, indices)
+	# indices = tf.range(num_inputs)
+	# indices = tf.random.shuffle(indices)
+	# train_inputs = tf.gather(train_inputs, indices)
+	# train_labels = tf.gather(train_labels, indices)
 
 	steps = int(num_inputs/model.batch_size)
 	
@@ -180,12 +184,13 @@ def visualize_results(image_inputs):
 
 def main():
 	#step1: get the training data and testing data
-	(train_inputs, train_labels) = get_data('sample_jpgs/', 'sample_train.csv', 20) 
-	(test_inputs, test_labels) = get_data('sample_jpgs/', 'sample_train.csv', 10)
+	(train_inputs, train_labels) = get_data('sample_jpgs/', 'sample_train.csv', 50) 
+	(test_inputs, test_labels) = get_data('sample_jpgs/', 'sample_train.csv', 5)
+	#TODO: here we read the training and testing data from the same pool of images, in the future, we should test with different images 
 
 	#step2: initialize and train the model
-	model = Model(1, 256) #num_class = 1, image_size = 256
-	epochs = 5
+	model = Model(1, 768) #num_class = 1, image_size = 768
+	epochs = 2
 	for _ in range(epochs): 
 		train(model, train_inputs, train_labels)
 
