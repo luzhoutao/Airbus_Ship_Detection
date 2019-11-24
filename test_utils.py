@@ -10,26 +10,12 @@ def IoU(probs, labels, eps=1e-6):
     :param labels: integer tensor, segmentation mask labels [batch_size x height x width]
     :return: IoU of each input image as a tensor [batch_size]
     '''
-    
-    # prediction = tf.cast(probs > 0.5, dtype=tf.dtypes.float32) 
-    # --(what are we trying to do here? I thought we should convert >0.5 to 1, but here this above line will convert all values to 0.0)
+    prediction = tf.cast(probs > 0.5, dtype=tf.dtypes.float32)
+    labels = tf.cast(labels, dtype=tf.dtypes.float32)
 
-    # intersection = tf.reduce_sum(labels*predictions, axis=[1, 2])  --##stuck here , error: Could not find valid device for node.Node:{{node Mul}}
-    # union = tf.reduce_sum(prediction + labels, axis=[1, 2]) - intersection
-    # return (intersection + eps) / (union + eps)
-    
-    prediction = probs.numpy().copy()
-    prediction[prediction>0.5] = 1
-    prediction[prediction<=0.5] = 0
-    labels = np.reshape(labels.numpy(),-1)
-    prediction = np.reshape(prediction,-1)
-    
-    intersection = np.sum(np.multiply(labels,prediction)).mean()
-    union = np.sum(prediction + labels).mean()
+    intersection = tf.reduce_sum(labels * prediction, axis=[1, 2])
+    union = tf.reduce_sum(prediction + labels, axis=[1, 2]) - intersection
     return (intersection + eps) / (union + eps)
-
-
-    
 
 
 def F2(probs,
@@ -47,7 +33,7 @@ def F2(probs,
     :return: 
     '''
     # Whether there is a ship present in the ground truth.
-    present = tf.reduce_sum(labels, axis=[1, 2]) > 0
+    present = tf.greater(tf.reduce_sum(labels, axis=[1, 2]), 0.0)
 
     scores = []
     for threshold in thresholds:
@@ -65,7 +51,7 @@ def F2(probs,
         FP = tf.reduce_sum(
             tf.cast(tf.math.logical_and(tf.logical_not(present), positive),
                     tf.dtypes.float32))
-        scores.append((5 * TP + eps) / (5 * TP + 4 * FN + FP + eps))
+        scores.append((5.0 * TP + eps) / (5.0 * TP + 4.0 * FN + FP + eps))
     return tf.reduce_mean(scores)
 
 
