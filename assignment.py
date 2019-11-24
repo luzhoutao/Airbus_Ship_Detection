@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 from matplotlib import pyplot as plt
-from preprocess import get_data
+from preprocess import get_data, read_encodings
 from test_utils import IoU, F2 #todo: integrate this to test()
 
 import os
@@ -136,23 +136,17 @@ class Model(tf.keras.Model):
 
 
 
-def train(model, train_inputs, train_labels):
-
-    train_inputs = tf.image.random_flip_left_right(train_inputs)
-
-    (num_inputs, _,_,_) = train_inputs.shape
-    indices = tf.range(num_inputs)
-    indices = tf.random.shuffle(indices)
-    train_inputs = tf.gather(train_inputs, indices)
-    train_labels = tf.gather(train_labels, indices)
-
+def train(model, img_dir, train_img_names,img_to_encodings):
+    num_inputs = len(train_img_names)
     steps = int(num_inputs/model.batch_size)
+
+    random.shuffle(train_img_names)
 
     for i in range(0, steps):
         start = i *model.batch_size
         end = (i+1)*model.batch_size
-        inputs = train_inputs[start:end,:,:,:]
-        labels = train_labels[start:end, :, :, :]
+        # now we load the actual content of the images, which is a huge amount of data
+        inputs, labels = get_data(img_dir, train_img_names[start:end],img_to_encodings)
 
         with tf.GradientTape() as tape:
             logits = model(inputs)
@@ -167,10 +161,20 @@ def train(model, train_inputs, train_labels):
 
 
 
-def test(model, test_inputs,test_labels):
-    logits = model(test_inputs)
-    accuracy = model.accuracy(logits, test_labels)
-    return accuracy
+def test(model, img_dir, test_img_names, img_to_encodings):
+    num_inputs = len(test_img_names)
+    steps = int(num_inputs/model.batch_size)
+
+    accu = []
+    for i in range(0, steps):
+        start = i *model.batch_size
+        end = (i+1)*model.batch_size
+        # now we load the actual content of the images, which is a huge amount of data
+        inputs, labels = get_data(img_dir, test_img_names[start:end],img_to_encodings)
+        logits = model(inputs)
+        accuracy = model.accuracy(logits, labels)
+        accu.append(accuracy)
+    return sum(accu)/len(accu)
 
 def visualize_results(image_inputs):
     #todo
@@ -180,17 +184,19 @@ def visualize_results(image_inputs):
 
 def main():
     #step1: get the training data and testing data
-    (train_inputs, train_labels) = get_data('sample_jpgs/', 'sample_train.csv', 20)
-    (test_inputs, test_labels) = get_data('sample_jpgs/', 'sample_train.csv', 10)
+    img_to_encodings = read_encodings('sample_train.csv')
+    img_names = list(img_to_encodings.keys()) # a list of image names as input, images will not be loaded until needed
+    train_img_names = img_names[:20]
+    test_img_names = img_names[20:30]
 
     #step2: initialize and train the model
     model = Model(1, 256) #num_class = 1, image_size = 256
     epochs = 5
     for _ in range(epochs):
-        train(model, train_inputs, train_labels)
+        train(model, 'sample_jpgs', train_img_names, img_to_encodings)
 
     #step3: test the model
-    accuracy = test(model, test_inputs, test_labels)
+    accuracy = test(model, 'sample_jpgs', test_img_names, img_to_encodings)
     print("========> Test Accuracy: %.4f" %accuracy)
 
 
