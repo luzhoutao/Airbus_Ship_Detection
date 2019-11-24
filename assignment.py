@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 from matplotlib import pyplot as plt
-from preprocess import get_data
+from preprocess import get_data, read_encodings
 from test_utils import IoU, F2 #todo: integrate this to test()
 
 import os
@@ -11,42 +11,42 @@ import random
 
 
 class Model(tf.keras.Model):
-	def __init__(self, num_class, image_size):
-		"""
-    	This model class will contain the architecture for your model.
-		"""
-		super(Model, self).__init__()
+    def __init__(self, num_class, image_size):
+        """
+        This model class will contain the architecture for your model.
+        """
+        super(Model, self).__init__()
 
-		self.num_class = num_class #? 
-		self.image_size = image_size
-		self.batch_size = 1
+        self.num_class = num_class #?
+        self.image_size = image_size
+        self.batch_size = 1
 
-		self.dropout_rate = 0.5
-		self.learning_rate = 1e-4
-		self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
+        self.dropout_rate = 0.5
+        self.learning_rate = 1e-4
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
 
-	def call(self, inputs):
-		"""
-		Runs a forward pass on an input batch of images.
-		:param inputs: images, shape of (num_inputs, ?, ?, ?);
-		during training, the shape is (batch_size, ?, ?, ?)
-		:return: logits - a matrix of shape (num_inputs, ?, ?, ?); during training, it would be (batch_size, ?, ?, ?)
-		"""
+    def call(self, inputs):
+        """
+        Runs a forward pass on an input batch of images.
+        :param inputs: images, shape of (num_inputs, ?, ?, ?);
+        during training, the shape is (batch_size, ?, ?, ?)
+        :return: logits - a matrix of shape (num_inputs, ?, ?, ?); during training, it would be (batch_size, ?, ?, ?)
+        """
 
-		# conv1
-		conv1 = tf.keras.layers.Conv2D(8, 3, activation='relu', padding='same')(inputs)
-		conv1 = tf.keras.layers.Conv2D(8, 3, activation='relu', padding='same')(conv1)
-		pool1   = tf.keras.layers.MaxPooling2D(2, strides=2, padding='same')(conv1) #1/2
+        # conv1
+        conv1 = tf.keras.layers.Conv2D(8, 3, activation='relu', padding='same')(inputs)
+        conv1 = tf.keras.layers.Conv2D(8, 3, activation='relu', padding='same')(conv1)
+        pool1   = tf.keras.layers.MaxPooling2D(2, strides=2, padding='same')(conv1) #1/2
 
         # conv2
-		conv2 = tf.keras.layers.Conv2D(16, 3, activation='relu', padding='same')(pool1)
-		conv2 = tf.keras.layers.Conv2D(16, 3, activation='relu', padding='same')(conv2)
-		pool2   = tf.keras.layers.MaxPooling2D(2, strides=2, padding='same')(conv2) # 1/4
-        
-		# conv3
-		conv3 = tf.keras.layers.Conv2D(32, 3, activation='relu', padding='same')(pool2)
-		conv3 = tf.keras.layers.Conv2D(32, 3, activation='relu', padding='same')(conv3)
-		pool3   = tf.keras.layers.MaxPooling2D(2, strides=2, padding='same')(conv3) # 1/8
+        conv2 = tf.keras.layers.Conv2D(16, 3, activation='relu', padding='same')(pool1)
+        conv2 = tf.keras.layers.Conv2D(16, 3, activation='relu', padding='same')(conv2)
+        pool2   = tf.keras.layers.MaxPooling2D(2, strides=2, padding='same')(conv2) # 1/4
+
+        # conv3
+        conv3 = tf.keras.layers.Conv2D(32, 3, activation='relu', padding='same')(pool2)
+        conv3 = tf.keras.layers.Conv2D(32, 3, activation='relu', padding='same')(conv3)
+        pool3   = tf.keras.layers.MaxPooling2D(2, strides=2, padding='same')(conv3) # 1/8
 
         # conv4
 		conv4 = tf.keras.layers.Conv2D(64, 3, activation='relu', padding='same')(pool3)
@@ -105,10 +105,10 @@ class Model(tf.keras.Model):
 
 
 	def accuracy(self, logits, labels):
-		#logits : numpy of shape=(num_examples, 256, 256, 1), dtype=float32
+		#logits : numpy of shape=(num_examples, 768,768, 1), dtype=float32
 		
-		lo1 = tf.reshape(logits, [-1,256,256])
-		la1 = tf.reshape(labels, [-1,256,256])
+		lo1 = tf.reshape(logits, [-1,768,768])
+		la1 = tf.reshape(labels, [-1,768,768])
 		
 		iou = IoU(lo1, la1, eps=1e-6)
 		print("-> IoU = %3.8f" %iou)
@@ -140,23 +140,17 @@ class Model(tf.keras.Model):
 		
 		
 
-def train(model, train_inputs, train_labels):
+def train(model, img_dir, train_img_names,img_to_encodings):
+    num_inputs = len(train_img_names)
+    steps = int(num_inputs/model.batch_size)
 
-	# train_inputs = tf.image.random_flip_left_right(train_inputs)
+    random.shuffle(train_img_names)
 
-	(num_inputs, _,_,_) = train_inputs.shape
-	# indices = tf.range(num_inputs)
-	# indices = tf.random.shuffle(indices)
-	# train_inputs = tf.gather(train_inputs, indices)
-	# train_labels = tf.gather(train_labels, indices)
-
-	steps = int(num_inputs/model.batch_size)
-	
-	for i in range(0, steps):
-		start = i *model.batch_size
-		end = (i+1)*model.batch_size
-		inputs = train_inputs[start:end,:,:,:]
-		labels = train_labels[start:end, :, :, :]
+    for i in range(0, steps):
+        start = i *model.batch_size
+        end = (i+1)*model.batch_size
+        # now we load the actual content of the images, which is a huge amount of data
+		inputs, labels = get_data(img_dir, train_img_names[start:end],img_to_encodings)
 
 		with tf.GradientTape() as tape:
 			logits = model(inputs)
@@ -171,34 +165,46 @@ def train(model, train_inputs, train_labels):
 
 
 
-def test(model, test_inputs,test_labels):
-	logits = model(test_inputs)
-	accuracy = model.accuracy(logits, test_labels)
-	return accuracy
+def test(model, img_dir, test_img_names, img_to_encodings):
+    num_inputs = len(test_img_names)
+    steps = int(num_inputs/model.batch_size)
+
+    accu = []
+    for i in range(0, steps):
+        start = i *model.batch_size
+        end = (i+1)*model.batch_size
+        # now we load the actual content of the images, which is a huge amount of data
+        inputs, labels = get_data(img_dir, test_img_names[start:end],img_to_encodings)
+        logits = model(inputs)
+        accuracy = model.accuracy(logits, labels)
+        accu.append(accuracy)
+    return sum(accu)/len(accu)
+
 
 def visualize_results(image_inputs):
-	#todo
-	pass
+    #todo
+    pass
 
 
 
 def main():
-	#step1: get the training data and testing data
-	(train_inputs, train_labels) = get_data('sample_jpgs/', 'sample_train.csv', 50) 
-	(test_inputs, test_labels) = get_data('sample_jpgs/', 'sample_train.csv', 5)
-	#TODO: here we read the training and testing data from the same pool of images, in the future, we should test with different images 
 
-	#step2: initialize and train the model
-	model = Model(1, 768) #num_class = 1, image_size = 768
-	epochs = 2
-	for _ in range(epochs): 
-		train(model, train_inputs, train_labels)
+    #step1: get the training data and testing data
+    img_to_encodings = read_encodings('sample_train.csv')
+    img_names = list(img_to_encodings.keys()) # a list of image names as input, images will not be loaded until needed
+    train_img_names = img_names[:20]
+    test_img_names = img_names[20:30]
 
-	#step3: test the model
-	accuracy = test(model, test_inputs, test_labels)
-	print("========> Test Accuracy: %.4f" %accuracy)
+    #step2: initialize and train the model
+    model = Model(1, 768) #num_class = 1, image_size = 768
+    epochs = 5
+    for _ in range(epochs):
+        train(model, 'sample_jpgs', train_img_names, img_to_encodings)
+    #step3: test the model
+    accuracy = test(model, 'sample_jpgs', test_img_names, img_to_encodings)
+    print("========> Test Accuracy: %.4f" %accuracy)
 
 
 
 if __name__ == '__main__':
-	main()
+    main()
