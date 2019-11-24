@@ -157,15 +157,13 @@ def train(model, train_inputs, train_labels):
 		with tf.GradientTape() as tape:
 			logits = model(inputs)
 			loss = model.loss(logits, labels)
-			print("=>loss = %.4f"% loss)
+			
 		gradients = tape.gradient(loss, model.trainable_variables)
 		model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-		
-		
+				
 		if (i % 5 == 0):
 			train_acc = model.accuracy(logits, labels)
-			print("========>Step %2d" %i)
-			print("===========> Accuracy = %3.4f" % train_acc)
+			print("========>Step %2d, accuracy=%3.4f, loss=%3.4f" %(i, train_acc, loss))
 
 
 
@@ -187,7 +185,7 @@ def main():
 
 	#step2: initialize and train the model
 	model = Model(1, 256) #num_class = 1, image_size = 256
-	epochs = 1
+	epochs = 5
 	for _ in range(epochs): 
 		train(model, train_inputs, train_labels)
 
