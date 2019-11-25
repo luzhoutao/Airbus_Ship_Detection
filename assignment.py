@@ -22,7 +22,7 @@ class Model(tf.keras.Model):
         self.batch_size = 1
 
         self.dropout_rate = 0.5
-        self.learning_rate = 1e-4
+        self.learning_rate = 1e-2 #increase from 1e-4 
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
 
         # conv1
@@ -30,32 +30,32 @@ class Model(tf.keras.Model):
         self.conv1_2 = tf.keras.layers.Conv2D(8, 3, activation='relu', padding='same')
         self.pool1 = tf.keras.layers.MaxPooling2D(2, strides=2, padding='same')  # 1/2
 
-        # conv2
-        self.conv2_1 = tf.keras.layers.Conv2D(16, 3, activation='relu', padding='same')
-        self.conv2_2 = tf.keras.layers.Conv2D(16, 3, activation='relu', padding='same')
-        self.pool2 = tf.keras.layers.MaxPooling2D(2, strides=2, padding='same')  # 1/4
+        # # conv2
+        # self.conv2_1 = tf.keras.layers.Conv2D(16, 3, activation='relu', padding='same')
+        # self.conv2_2 = tf.keras.layers.Conv2D(16, 3, activation='relu', padding='same')
+        # self.pool2 = tf.keras.layers.MaxPooling2D(2, strides=2, padding='same')  # 1/4
 
         # conv3
         self.conv3_1 = tf.keras.layers.Conv2D(32, 3, activation='relu', padding='same')
         self.conv3_2 = tf.keras.layers.Conv2D(32, 3, activation='relu', padding='same')
         self.pool3 = tf.keras.layers.MaxPooling2D(2, strides=2, padding='same')  # 1/8
 
-        # conv4
-        self.conv4_1 = tf.keras.layers.Conv2D(64, 3, activation='relu', padding='same')
-        self.conv4_2 = tf.keras.layers.Conv2D(64, 3, activation='relu', padding='same')
-        self.dropout1 = tf.keras.layers.Dropout(self.dropout_rate)
-        self.pool4 = tf.keras.layers.MaxPooling2D(2, strides=2, padding='same')  # 1/16
+        # # conv4
+        # self.conv4_1 = tf.keras.layers.Conv2D(64, 3, activation='relu', padding='same')
+        # self.conv4_2 = tf.keras.layers.Conv2D(64, 3, activation='relu', padding='same')
+        # self.dropout1 = tf.keras.layers.Dropout(self.dropout_rate)
+        # self.pool4 = tf.keras.layers.MaxPooling2D(2, strides=2, padding='same')  # 1/16
 
         # conv5
         self.conv5_1 = tf.keras.layers.Conv2D(128, 3, activation='relu', padding='same')
         self.conv5_2 = tf.keras.layers.Conv2D(128, 3, activation='relu', padding='same')
         self.dropout2 = tf.keras.layers.Dropout(self.dropout_rate)
 
-        # conv6
-        self.up6 = tf.keras.layers.UpSampling2D(size=(2, 2))
-        self.concat6 = tf.keras.layers.Concatenate(axis=3)
-        self.conv6_1 = tf.keras.layers.Conv2D(64, 3, activation='relu', padding='same')
-        self.conv6_2 = tf.keras.layers.Conv2D(64, 3, activation='relu', padding='same')
+        # # conv6
+        # self.up6 = tf.keras.layers.UpSampling2D(size=(2, 2))
+        # self.concat6 = tf.keras.layers.Concatenate(axis=3)
+        # self.conv6_1 = tf.keras.layers.Conv2D(64, 3, activation='relu', padding='same')
+        # self.conv6_2 = tf.keras.layers.Conv2D(64, 3, activation='relu', padding='same')
 
         # conv7
         self.up7 = tf.keras.layers.UpSampling2D(size=(2, 2))
@@ -64,12 +64,12 @@ class Model(tf.keras.Model):
         self.conv7_1 = tf.keras.layers.Conv2D(32, 3, activation='relu', padding='same')
         self.conv7_2 = tf.keras.layers.Conv2D(32, 3, activation='relu', padding='same')
 
-        # conv8
-        self.up8 = tf.keras.layers.UpSampling2D(size=(2, 2))
-        # up8 = tf.keras.layers.Conv2D(16, 2, activation='relu', padding='same')(up8)
-        self.concat8 = tf.keras.layers.Concatenate(axis=3)
-        self.conv8_1 = tf.keras.layers.Conv2D(16, 3, activation='relu', padding='same')
-        self.conv8_2 = tf.keras.layers.Conv2D(16, 3, activation='relu', padding='same')
+        # # conv8
+        # self.up8 = tf.keras.layers.UpSampling2D(size=(2, 2))
+        # # up8 = tf.keras.layers.Conv2D(16, 2, activation='relu', padding='same')(up8)
+        # self.concat8 = tf.keras.layers.Concatenate(axis=3)
+        # self.conv8_1 = tf.keras.layers.Conv2D(16, 3, activation='relu', padding='same')
+        # self.conv8_2 = tf.keras.layers.Conv2D(16, 3, activation='relu', padding='same')
 
         # conv9
         self.up9 = tf.keras.layers.UpSampling2D(size=(2, 2))
@@ -77,6 +77,59 @@ class Model(tf.keras.Model):
         self.concat9 = tf.keras.layers.Concatenate(axis=3)
         self.conv9_1 = tf.keras.layers.Conv2D(8, 3, activation='relu', padding='same')
         self.conv9_2 = tf.keras.layers.Conv2D(8, 3, activation='relu', padding='same')
+
+        # conv2_1
+        self.conv2_1_1 = tf.keras.layers.Conv2D(8, 3, activation='relu', padding='same')
+        self.conv2_1_2 = tf.keras.layers.Conv2D(8, 3, activation='relu', padding='same')
+        self.pool2_1 = tf.keras.layers.MaxPooling2D(2, strides=2, padding='same')  # 1/2
+
+        # # conv2_2
+        # self.conv2_2_1 = tf.keras.layers.Conv2D(16, 3, activation='relu', padding='same')
+        # self.conv2_2_2 = tf.keras.layers.Conv2D(16, 3, activation='relu', padding='same')
+        # self.pool2_2 = tf.keras.layers.MaxPooling2D(2, strides=2, padding='same')  # 1/4
+
+        # conv2_3
+        self.conv2_3_1 = tf.keras.layers.Conv2D(32, 3, activation='relu', padding='same')
+        self.conv2_3_2 = tf.keras.layers.Conv2D(32, 3, activation='relu', padding='same')
+        self.pool2_3 = tf.keras.layers.MaxPooling2D(2, strides=2, padding='same')  # 1/8
+
+        # # conv2_4
+        # self.conv2_4_1 = tf.keras.layers.Conv2D(64, 3, activation='relu', padding='same')
+        # self.conv2_4_2 = tf.keras.layers.Conv2D(64, 3, activation='relu', padding='same')
+        # self.dropout2_1 = tf.keras.layers.Dropout(self.dropout_rate)
+        # self.pool2_4 = tf.keras.layers.MaxPooling2D(2, strides=2, padding='same')  # 1/16
+
+        # conv2_5
+        self.conv2_5_1 = tf.keras.layers.Conv2D(128, 3, activation='relu', padding='same')
+        self.conv2_5_2 = tf.keras.layers.Conv2D(128, 3, activation='relu', padding='same')
+        self.dropout2_2 = tf.keras.layers.Dropout(self.dropout_rate)
+
+        # # conv2_6
+        # self.up2_6 = tf.keras.layers.UpSampling2D(size=(2, 2))
+        # self.concat2_6 = tf.keras.layers.Concatenate(axis=3)
+        # self.conv2_6_1 = tf.keras.layers.Conv2D(64, 3, activation='relu', padding='same')
+        # self.conv2_6_2 = tf.keras.layers.Conv2D(64, 3, activation='relu', padding='same')
+
+        # conv2_7
+        self.up2_7 = tf.keras.layers.UpSampling2D(size=(2, 2))
+        # up7 = tf.keras.layers.Conv2D(32, 2, activation='relu', padding='same')(up7)
+        self.concat2_7 = tf.keras.layers.Concatenate(axis=3)
+        self.conv2_7_1 = tf.keras.layers.Conv2D(32, 3, activation='relu', padding='same')
+        self.conv2_7_2 = tf.keras.layers.Conv2D(32, 3, activation='relu', padding='same')
+
+        # # conv2_8
+        # self.up2_8 = tf.keras.layers.UpSampling2D(size=(2, 2))
+        # # up8 = tf.keras.layers.Conv2D(16, 2, activation='relu', padding='same')(up8)
+        # self.concat2_8 = tf.keras.layers.Concatenate(axis=3)
+        # self.conv2_8_1 = tf.keras.layers.Conv2D(16, 3, activation='relu', padding='same')
+        # self.conv2_8_2 = tf.keras.layers.Conv2D(16, 3, activation='relu', padding='same')
+
+        # conv2_9
+        self.up2_9 = tf.keras.layers.UpSampling2D(size=(2, 2))
+        # up9 = tf.keras.layers.Conv2D(8, 2, activation='relu', padding='same')(up9) #todo
+        self.concat2_9 = tf.keras.layers.Concatenate(axis=3)
+        self.conv2_9_1 = tf.keras.layers.Conv2D(8, 3, activation='relu', padding='same')
+        self.conv2_9_2 = tf.keras.layers.Conv2D(8, 3, activation='relu', padding='same')
 
         # drop9   = tf.keras.layers.Dropout(self.dropout_rate)(conv9) #add an additional dropout here
         # conv9 = tf.keras.layers.Conv2D(2, 3, activation='relu', padding='same')(conv9)
@@ -86,49 +139,48 @@ class Model(tf.keras.Model):
     def call(self, inputs):
         """
         Runs a forward pass on an input batch of images.
-        :param inputs: images, shape of (num_inputs, ?, ?, ?);
-        during training, the shape is (batch_size, ?, ?, ?)
-        :return: logits - a matrix of shape (num_inputs, ?, ?, ?); during training, it would be (batch_size, ?, ?, ?)
+        :param inputs: images, shape of (num_inputs, 768, 768, 3);
+        :return: logits - a matrix of shape (num_inputs, 768, 768, 1);
         """
 
         # conv1
         conv1 = self.conv1_2(self.conv1_1(inputs))
         pool1 = self.pool1(conv1) #1/2
 
-        # conv2
-        conv2 = self.conv2_2(self.conv2_1(pool1))
-        pool2 = self.pool2(conv2) # 1/4
+        # # conv2
+        # conv2 = self.conv2_2(self.conv2_1(pool1))
+        # pool2 = self.pool2(conv2) # 1/4
 
         # conv3
-        conv3 = self.conv3_2(self.conv3_1(pool2))
+        conv3 = self.conv3_2(self.conv3_1(pool1))
         pool3 = self.pool3(conv3) # 1/8
 
-        # conv4
-        conv4 = self.dropout1(self.conv4_2(self.conv4_1(pool3)))
-        pool4 = self.pool4(conv4) # 1/16
+        # # conv4
+        # conv4 = self.dropout1(self.conv4_2(self.conv4_1(pool3)))
+        # pool4 = self.pool4(conv4) # 1/16
 
         # conv5
-        conv5 = self.dropout2(self.conv5_2(self.conv5_1(pool4)))
+        conv5 = self.dropout2(self.conv5_2(self.conv5_1(pool3)))
 
-        # conv6
-        up6 = self.up6(conv5)
-        concat6 = self.concat6([conv4, up6])
-        conv6 = self.conv6_2(self.conv6_1(concat6))
+        # # conv6
+        # up6 = self.up6(conv5)
+        # concat6 = self.concat6([conv4, up6])
+        # conv6 = self.conv6_2(self.conv6_1(concat6))
 
         # conv7
-        up7 = self.up7(conv6)
+        up7 = self.up7(conv5)
         # up7 = tf.keras.layers.Conv2D(32, 2, activation='relu', padding='same')(up7)
         concat7 = self.concat7([conv3, up7])
         conv7 = self.conv7_2(self.conv7_1(concat7))
 
-        # conv8
-        up8 = self.up8(conv7)
-        # up8 = tf.keras.layers.Conv2D(16, 2, activation='relu', padding='same')(up8)
-        concat8 = self.concat8([conv2, up8])
-        conv8 = self.conv8_2(self.conv8_1(concat8))
+        # # conv8
+        # up8 = self.up8(conv7)
+        # # up8 = tf.keras.layers.Conv2D(16, 2, activation='relu', padding='same')(up8)
+        # concat8 = self.concat8([conv2, up8])
+        # conv8 = self.conv8_2(self.conv8_1(concat8))
 
         # conv9
-        up9 = self.up9(conv8)
+        up9 = self.up9(conv7)
         # up9 = tf.keras.layers.Conv2D(8, 2, activation='relu', padding='same')(up9) #todo
         concat9 = self.concat9([conv1,up9])
         conv9 = self.conv9_2(self.conv9_1(concat9))
@@ -136,7 +188,59 @@ class Model(tf.keras.Model):
         # drop9   = tf.keras.layers.Dropout(self.dropout_rate)(conv9) #add an additional dropout here 
         # conv9 = tf.keras.layers.Conv2D(2, 3, activation='relu', padding='same')(conv9)
         # conv10
-        logits = self.out(conv9) #kernal_size = 1
+
+        # conv2_1
+        conv2_1 = self.conv2_1_2(self.conv2_1_1(conv9))
+        pool2_1 = self.pool2_1(conv2_1) #1/2
+
+        # # conv2
+        # conv2_2 = self.conv2_2_2(self.conv2_2_1(pool2_1))
+        # pool2_2 = self.pool2_2(conv2_2) # 1/4
+
+        # conv3
+        conv2_3 = self.conv2_3_2(self.conv2_3_1(pool2_1))
+        pool2_3 = self.pool2_3(conv2_3) # 1/8
+
+        # # conv4
+        # conv2_4 = self.dropout2_1(self.conv2_4_2(self.conv2_4_1(pool2_3)))
+        # pool2_4 = self.pool4(conv2_4) # 1/16
+
+        # conv5
+        conv2_5 = self.dropout2_2(self.conv2_5_2(self.conv2_5_1(pool2_3)))
+
+        # # conv6
+        # up2_6 = self.up2_6(conv2_5)
+        # concat2_6 = self.concat2_6([conv2_4, up2_6])
+        # conv2_6 = self.conv2_6_2(self.conv2_6_1(concat2_6))
+
+        # conv7
+        up2_7 = self.up2_7(conv2_5)
+        # up7 = tf.keras.layers.Conv2D(32, 2, activation='relu', padding='same')(up7)
+        concat2_7 = self.concat2_7([conv2_3, up2_7])
+        conv2_7 = self.conv2_7_2(self.conv2_7_1(concat2_7))
+
+        # # conv8
+        # up2_8 = self.up2_8(conv2_7)
+        # # up8 = tf.keras.layers.Conv2D(16, 2, activation='relu', padding='same')(up8)
+        # concat2_8 = self.concat2_8([conv2_2, up2_8])
+        # conv2_8 = self.conv2_8_2(self.conv2_8_1(concat2_8))
+
+        # conv9
+        up2_9 = self.up2_9(conv2_7)
+        # up9 = tf.keras.layers.Conv2D(8, 2, activation='relu', padding='same')(up9) #todo
+        concat2_9 = self.concat2_9([conv2_1,up2_9])
+        conv2_9 = self.conv2_9_2(self.conv2_9_1(concat2_9))
+
+
+
+
+
+
+
+
+
+
+        logits = self.out(conv2_9) #kernal_size = 1
         return logits
 		
 
@@ -182,7 +286,7 @@ def train(model, img_dir, train_img_names,img_to_encodings):
             gradients = tape.gradient(loss, model.trainable_variables)
             model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 				
-        if (i % 5 == 0):
+        if (i % 1 == 0):
             train_acc = model.accuracy(logits, labels)
             print("========>Step %2d, accuracy=%3.4f, loss=%3.4f" %(i, train_acc, loss))
 
