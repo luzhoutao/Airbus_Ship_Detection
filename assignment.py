@@ -275,7 +275,8 @@ def main():
         train_img_names = img_names[int(N * VALIDATION_RATE):]
         val_img_names = img_names[:int(N * VALIDATION_RATE)]
 
-        for _ in range(args.num_epochs):
+        for e in range(args.num_epochs):
+            print("Epoch %d:" % e)
             train(model, args.img_dir, train_img_names, img_to_encodings, manager)
 
         #step3: test the model

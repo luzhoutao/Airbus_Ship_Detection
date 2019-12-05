@@ -14,7 +14,7 @@ def read_encodings(file_name):
                 img_to_encodings[jpg] = []
             img_to_encodings[jpg].append(encoding)
 
-    # print("=====> read the number of encodings = ", len(img_to_encodings))
+    print("=====> read the number of encodings = ", len(img_to_encodings))
     return img_to_encodings
 
 # masks will be memory intensive so use small batches
