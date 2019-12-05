@@ -17,7 +17,7 @@ print("GPU Available: ", gpu_available)
 
 ## --------------------------------------------------------------------------------------
 
-parser = argparse.ArgumentParser(description='DCGAN')
+parser = argparse.ArgumentParser(description='Airbus Ship Detection')
 
 parser.add_argument('--encoding-file', type=str, default='sample_train.csv',
                     help='path to encoding file')
@@ -253,7 +253,7 @@ def balance_sample_dataset(img_to_encodings):
     empty_images, nonempty_images = [], []
 
     for name, encodings in img_to_encodings.items():
-        if len(encodings) == 1 and encodings[0] == "":
+        if len(encodings) == 1 and encodings[0] == "\n":
             empty_images.append(name)
         else:
             nonempty_images.append(name)
