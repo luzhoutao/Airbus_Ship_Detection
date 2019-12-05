@@ -184,7 +184,7 @@ class Model(tf.keras.Model):
     def loss(self, logits, labels):
         labels = tf.dtypes.cast(labels, tf.float32)
         logits = tf.dtypes.cast(logits, tf.float32)
-        loss = tf.keras.losses.binary_crossentropy(labels, logits, from_logits=True)
+        loss = tf.keras.losses.binary_crossentropy(labels, logits, from_logits=False)
         ave_loss = tf.reduce_mean(loss)
         return ave_loss
 
