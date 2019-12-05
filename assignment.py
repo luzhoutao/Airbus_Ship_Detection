@@ -99,25 +99,25 @@ class Model(tf.keras.Model):
         self.dropout2 = tf.keras.layers.Dropout(self.dropout_rate)
 
         # conv6
-        self.up6 = tf.keras.layers.UpSampling2D(size=(2, 2))
+        self.up6 = tf.keras.layers.Conv2DTranspose(128, 3, strides=(2, 2), padding="same")
         self.concat6 = tf.keras.layers.Concatenate(axis=3)
         self.conv6_1 = tf.keras.layers.Conv2D(64, 3, activation='relu', padding='same')
         self.conv6_2 = tf.keras.layers.Conv2D(64, 3, activation='relu', padding='same')
 
         # conv7
-        self.up7 = tf.keras.layers.UpSampling2D(size=(2, 2))
+        self.up7 = tf.keras.layers.Conv2DTranspose(64, 3, strides=(2, 2), padding="same")
         self.concat7 = tf.keras.layers.Concatenate(axis=3)
         self.conv7_1 = tf.keras.layers.Conv2D(32, 3, activation='relu', padding='same')
         self.conv7_2 = tf.keras.layers.Conv2D(32, 3, activation='relu', padding='same')
 
         # conv8
-        self.up8 = tf.keras.layers.UpSampling2D(size=(2, 2))
+        self.up8 = tf.keras.layers.Conv2DTranspose(32, 3, strides=(2, 2), padding="same")
         self.concat8 = tf.keras.layers.Concatenate(axis=3)
         self.conv8_1 = tf.keras.layers.Conv2D(16, 3, activation='relu', padding='same')
         self.conv8_2 = tf.keras.layers.Conv2D(16, 3, activation='relu', padding='same')
 
         # conv9
-        self.up9 = tf.keras.layers.UpSampling2D(size=(2, 2))
+        self.up9 = tf.keras.layers.Conv2DTranspose(16, 3, strides=(2, 2), padding="same")
         self.concat9 = tf.keras.layers.Concatenate(axis=3)
         self.conv9_1 = tf.keras.layers.Conv2D(8, 3, activation='relu', padding='same')
         self.conv9_2 = tf.keras.layers.Conv2D(8, 3, activation='relu', padding='same')

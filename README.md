@@ -1,9 +1,13 @@
 # Airbus_Ship_Detection
 
+Model:
+- U-Net
 
-TODO
-- Train on the dataset
-- Model: 
-  - U-Net (also, change UpSampling to Conv2DTranspose)
-  - 2U-Net
-- Data preprocess / augment
+Changes:
+- Use Conv2DTranspose instead of UnSampling
+
+Rationale:
+- learn how to unsample instead of just replicating
+- but will result in more trainable_variable.
+
+Result[TODO]
