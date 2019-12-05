@@ -61,6 +61,7 @@ def get_data(img_dir, img_names, img_to_encodings):
     for img_name in img_names:
         mask = encodings_to_masks(img_to_encodings[img_name])
         mask = np.sum(mask, axis=0) # sum up masks (each mask is for one ship, to get the mask for the whole image, we need to sum up)
+        mask[mask > 0] = 1
         # mask = np.reshape(mask, [768,768, 1]) #todo: do we need this?
         masks.append(mask)
     masks = np.reshape(masks, (-1, 768, 768, 1))

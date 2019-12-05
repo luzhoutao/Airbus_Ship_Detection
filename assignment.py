@@ -249,13 +249,27 @@ def visualize_results(image_inputs):
     #todo
     pass
 
+def balance_sample_dataset(img_to_encodings):
+    empty_images, nonempty_images = [], []
+
+    for name, encodings in img_to_encodings.items():
+        if len(encodings) == 1 and encodings[0] == "":
+            empty_images.append(name)
+        else:
+            nonempty_images.append(name)
+
+    img_names = []
+    img_names.extend(random.sample(empty_images, len(nonempty_images)))
+    img_names.extend(nonempty_images)
+
+    return img_names
 
 def main():
     VALIDATION_RATE = 0.1
 
     #step1: get the training data and testing data
     img_to_encodings = read_encodings(args.encoding_file)
-    img_names = list(img_to_encodings.keys()) # a list of image names as input, images will not be loaded until needed
+    img_names = balance_sample_dataset(img_to_encodings)
     N = len(img_names)
 
     # step2: initialize and train the model
