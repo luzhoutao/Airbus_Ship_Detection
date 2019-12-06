@@ -18,6 +18,21 @@ def read_encodings(file_name):
     # print("=====> read the number of encodings = ", len(img_to_encodings))
     return img_to_encodings
 
+#return img_to_encodings for which the images contain at least 1 ship
+def read_nonempty_img_to_encodings(file_name):
+    img_to_encodings = {} # jpg name -> run length encoding strings
+    with open(file_name) as fd:
+        fd.readline()
+        for line in fd:
+            jpg, encoding = line.strip().split(',')
+            if encoding:
+                if jpg not in img_to_encodings:
+                    img_to_encodings[jpg] = []
+                img_to_encodings[jpg].append(encoding)
+    return img_to_encodings
+
+
+
 # masks will be memory intensive so use small batches
 def encodings_to_masks(encodings): # input an array of encoding string
     out=[]
@@ -80,13 +95,14 @@ def get_data(img_dir, img_names, img_to_encodings):
 
 if __name__ == '__main__':
     # img_to_encodings = read_encodings('data/train_ship_segmentations_v2.csv')
-    img_to_encodings = read_encodings('sample_train.csv')
+    # img_to_encodings = read_encodings('sample_train.csv') 
+    img_to_encodings = read_encodings('encoding.csv') 
     img_name = '000194a2d.jpg'
     mask = encodings_to_masks(img_to_encodings[img_name])
 
     import matplotlib.pyplot as plt
-    # jpg = jpg_img_to_array('data/'+img_name)
-    jpg = jpg_img_to_array('sample_jpgs/'+img_name)
+    jpg = jpg_img_to_array('data/'+img_name) #change sample_jpgs to data as this is the new folder data for our data
+    # jpg = jpg_img_to_array('sample_jpgs/'+img_name)
 
     mask = np.sum(mask, axis=0) # sum up masks for each ship
     _, axarr = plt.subplots(1, 3)

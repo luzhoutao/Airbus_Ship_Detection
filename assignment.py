@@ -1,12 +1,13 @@
 from __future__ import absolute_import
 from matplotlib import pyplot as plt
-from preprocess import get_data, read_encodings
-from test_utils import IoU, F2 #todo: integrate this to test()
+from preprocess import get_data, read_encodings, read_nonempty_img_to_encodings
+from test_utils import IoU, IoU2, F2 #todo: integrate this to test()
 
 import os
 import tensorflow as tf
 import numpy as np
 import random
+import datetime
 # import cv2
 
 
@@ -52,27 +53,27 @@ class Model(tf.keras.Model):
         self.dropout2 = tf.keras.layers.Dropout(self.dropout_rate)
 
         # conv6
-        self.up6 = tf.keras.layers.UpSampling2D(size=(2, 2))
+        self.up6 = tf.keras.layers.Conv2DTranspose(128, 3, strides=(2, 2), padding="same")
         self.concat6 = tf.keras.layers.Concatenate(axis=3)
         self.conv6_1 = tf.keras.layers.Conv2D(64, 3, activation='relu', padding='same')
         self.conv6_2 = tf.keras.layers.Conv2D(64, 3, activation='relu', padding='same')
 
         # conv7
-        self.up7 = tf.keras.layers.UpSampling2D(size=(2, 2))
+        self.up7 = tf.keras.layers.Conv2DTranspose(64, 3, strides=(2, 2), padding="same")
         # up7 = tf.keras.layers.Conv2D(32, 2, activation='relu', padding='same')(up7)
         self.concat7 = tf.keras.layers.Concatenate(axis=3)
         self.conv7_1 = tf.keras.layers.Conv2D(32, 3, activation='relu', padding='same')
         self.conv7_2 = tf.keras.layers.Conv2D(32, 3, activation='relu', padding='same')
 
         # conv8
-        self.up8 = tf.keras.layers.UpSampling2D(size=(2, 2))
+        self.up8 = tf.keras.layers.Conv2DTranspose(32, 3, strides=(2, 2), padding="same")
         # up8 = tf.keras.layers.Conv2D(16, 2, activation='relu', padding='same')(up8)
         self.concat8 = tf.keras.layers.Concatenate(axis=3)
         self.conv8_1 = tf.keras.layers.Conv2D(16, 3, activation='relu', padding='same')
         self.conv8_2 = tf.keras.layers.Conv2D(16, 3, activation='relu', padding='same')
 
         # conv9
-        self.up9 = tf.keras.layers.UpSampling2D(size=(2, 2))
+        self.up9 = tf.keras.layers.Conv2DTranspose(16, 3, strides=(2, 2), padding="same")
         # up9 = tf.keras.layers.Conv2D(8, 2, activation='relu', padding='same')(up9) #todo
         self.concat9 = tf.keras.layers.Concatenate(axis=3)
         self.conv9_1 = tf.keras.layers.Conv2D(8, 3, activation='relu', padding='same')
@@ -149,20 +150,34 @@ class Model(tf.keras.Model):
         loss = tf.keras.losses.binary_crossentropy(labels, logits, from_logits=True)
         ave_loss = tf.reduce_mean(loss)
         return ave_loss
+    def dice_loss(self, logits, labels):
+        labels = tf.dtypes.cast(labels, tf.float32)
+        logits = tf.dtypes.cast(logits, tf.float32)
+        numerator = 2 * tf.reduce_sum(labels * logits, axis=[1, 2])
+        denominator = tf.reduce_sum(labels + logits, axis=[1, 2])
+        return 1 - (numerator + 1) / (denominator + 1)
 
+
+
+    def IoU(self, logits, labels):
+        lo1 = tf.reshape(logits, [-1,768,768])
+        la1 = tf.reshape(labels, [-1,768,768])
+        iou = IoU(lo1, la1, eps=1e-6)
+        return iou
+    def IoU2(self, logits, labels):
+        lo1 = tf.reshape(logits, [-1,768,768])
+        la1 = tf.reshape(labels, [-1,768,768])
+        iou = IoU2(lo1, la1)
+        return iou
+    
 
     def accuracy(self, logits, labels):
         #logits : numpy of shape=(num_examples, 768,768, 1), dtype=float32
-        lo1 = tf.reshape(logits, [-1,768,768])
-        la1 = tf.reshape(labels, [-1,768,768])
-		
-        iou = IoU(lo1, la1, eps=1e-6)
-        print("-> IoU = %3.8f" %iou)
-
         return np.mean(tf.cast(logits > 0.5, dtype=tf.dtypes.int32).numpy() == labels)
 
 		
 def train(model, img_dir, train_img_names,img_to_encodings):
+    print("========> start training")
     num_inputs = len(train_img_names)
     steps = int(num_inputs/model.batch_size)
 
@@ -177,14 +192,20 @@ def train(model, img_dir, train_img_names,img_to_encodings):
 
         with tf.GradientTape() as tape:
             logits = model(inputs)
-            loss = model.loss(logits, labels)
+            # loss = model.loss(logits, labels)
+            loss = model.dice_loss(logits, labels)
 			
             gradients = tape.gradient(loss, model.trainable_variables)
             model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 				
-        if (i % 5 == 0):
+        if (i % 10 == 0):
             train_acc = model.accuracy(logits, labels)
-            print("========>Step %2d, accuracy=%3.4f, loss=%3.4f" %(i, train_acc, loss))
+            iou = model.IoU(logits, labels) 
+            iou2 = model.IoU2(logits, labels)                   
+
+            # time = datetime.datetime.now()
+            # print(time)
+            print("Step %2d, accuracy=%3.2f, loss=%3.2f, iou=%3.5f" %( i, train_acc, loss, iou))
 
 
 def test(model, img_dir, test_img_names, img_to_encodings):
@@ -210,18 +231,22 @@ def visualize_results(image_inputs):
 
 def main():
     #step1: get the training data and testing data
-    img_to_encodings = read_encodings('sample_train.csv')
-    img_names = list(img_to_encodings.keys()) # a list of image names as input, images will not be loaded until needed
-    train_img_names = img_names[:20]
-    test_img_names = img_names[20:30]
+    # img_to_encodings = read_encodings('encoding.csv')
+    print("===>start reading data")
+    nonempty_img_to_encodings = read_nonempty_img_to_encodings('encoding.csv')# here we only get non empty images and its encodings
+    img_names = list(nonempty_img_to_encodings.keys()) # a list of image names as input, images will not be loaded until needed
+    train_img_names = img_names[:3000]
+    test_img_names = img_names[3000:4000]
+    print("===>finish reading data")
 
     #step2: initialize and train the model
     model = Model(num_class=1, image_size=768)
-    epochs = 5
+    epochs = 1 #TA says 1 epoch is fine
     for _ in range(epochs):
-        train(model, 'sample_jpgs', train_img_names, img_to_encodings)
+        train(model, 'data', train_img_names, nonempty_img_to_encodings)
     #step3: test the model
-    accuracy = test(model, 'sample_jpgs', test_img_names, img_to_encodings)
+    print("========> Start Test:")
+    accuracy = test(model, 'data', test_img_names, nonempty_img_to_encodings)
     print("========> Test Accuracy: %.4f" % accuracy)
 
 

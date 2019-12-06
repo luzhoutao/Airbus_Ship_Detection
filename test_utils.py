@@ -16,6 +16,12 @@ def IoU(probs, labels, eps=1e-6):
     intersection = tf.reduce_sum(labels * prediction, axis=[1, 2])
     union = tf.reduce_sum(prediction + labels, axis=[1, 2]) - intersection
     return (intersection + eps) / (union + eps)
+# def IoU2(probs, labels):
+#     prediction = tf.cast(probs > 0.5, dtype=tf.dtypes.float32)
+#     labels = tf.cast(labels, dtype=tf.dtypes.float32)
+#     intersection = tf.reduce_sum(labels * prediction, axis=[1, 2])
+#     union = tf.reduce_sum(prediction + labels, axis=[1, 2]) - intersection
+#     return intersection / (union + 1.0)
 
 
 def F2(probs,
