@@ -28,6 +28,10 @@ def encodings_to_masks(encodings): # input an array of encoding string
         for i in range(0, len(arr)-1, 2):
             img[arr[i]:arr[i]+arr[i+1]] = 1
         out.append(img.reshape((768, 768)).T)
+
+    if len(out)==0: # no ship, return a mask of all 0
+        out = np.zeros(768*768, dtype=np.uint8)
+        return np.reshape(out, (1, 768, 768))
     out = np.array(out) # [batch size, 768, 768]
     return out
 
