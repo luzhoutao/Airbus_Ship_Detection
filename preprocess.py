@@ -9,10 +9,11 @@ def read_encodings(file_name):
     with open(file_name) as fd:
         fd.readline()
         for line in fd:
-            jpg, encoding = line.split(',')
+            jpg, encoding = line.strip().split(',')
             if jpg not in img_to_encodings:
                 img_to_encodings[jpg] = []
-            img_to_encodings[jpg].append(encoding)
+            if encoding:
+                img_to_encodings[jpg].append(encoding)
 
     # print("=====> read the number of encodings = ", len(img_to_encodings))
     return img_to_encodings
