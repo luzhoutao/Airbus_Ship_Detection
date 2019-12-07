@@ -16,12 +16,38 @@ def IoU(probs, labels, eps=1e-6):
     intersection = tf.reduce_sum(labels * prediction, axis=[1, 2])
     union = tf.reduce_sum(prediction + labels, axis=[1, 2]) - intersection
     return (intersection + eps) / (union + eps)
-# def IoU2(probs, labels):
-#     prediction = tf.cast(probs > 0.5, dtype=tf.dtypes.float32)
-#     labels = tf.cast(labels, dtype=tf.dtypes.float32)
-#     intersection = tf.reduce_sum(labels * prediction, axis=[1, 2])
-#     union = tf.reduce_sum(prediction + labels, axis=[1, 2]) - intersection
-#     return intersection / (union + 1.0)
+
+
+def recall(probs, labels, eps=1e-6):
+    '''
+    Compute IoU for each input in batch. 
+
+    [tf.keras.metrics.MeanIoU computes mean IoU over classes may not be proper in our case.]
+    :param probs: float tensor, predicted segmentation probabilities [batch_size x height x width].
+    :param labels: integer tensor, segmentation mask labels [batch_size x height x width]
+    :return: IoU of each input image as a tensor [batch_size]
+    '''
+    prediction = tf.cast(probs > 0.5, dtype=tf.dtypes.float32)
+    labels = tf.cast(labels, dtype=tf.dtypes.float32)
+
+    tp = tf.reduce_sum(labels * prediction, axis=[1, 2])
+    positive = tf.reduce_sum(labels, axis=[1, 2])
+    return (tp + eps) / (positive + eps)
+
+def precision(probs, labels, eps=1e-6):
+    '''
+    Compute IoU for each input in batch. 
+
+    [tf.keras.metrics.MeanIoU computes mean IoU over classes may not be proper in our case.]
+    :param probs: float tensor, predicted segmentation probabilities [batch_size x height x width].
+    :param labels: integer tensor, segmentation mask labels [batch_size x height x width]
+    :return: IoU of each input image as a tensor [batch_size]
+    '''
+    prediction = tf.cast(probs > 0.5, dtype=tf.dtypes.float32)
+    labels = tf.cast(labels, dtype=tf.dtypes.float32)
+
+    tp = tf.reduce_sum(labels * prediction, axis=[1, 2])
+    return (tp + eps) / (tf.reduce_sum(prediction, axis=[1, 2]) + eps)
 
 
 def F2(probs,
