@@ -1,5 +1,6 @@
 # Airbus_Ship_Detection
 
+<<<<<<< HEAD
 Changed the U-Net model:
 - 1. have changed UpSampling to Conv2DTranspose
 - 2. rename sample_train to data, to fit with the format on gcp
@@ -15,3 +16,16 @@ TODO
   - U-Net 
   - 2U-Net
 - Data preprocess / augment
+=======
+Model:
+- U-Net
+
+Changes:
+- Use Conv2DTranspose instead of UnSampling
+
+Rationale:
+- learn how to unsample instead of just replicating
+- but will result in more trainable_variable.
+
+Result[TODO]
+>>>>>>> 3f79c214b5a944ec8b8c673fbd52447a1d0daf6c

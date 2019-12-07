@@ -15,7 +15,7 @@ def read_encodings(file_name):
             if encoding:
                 img_to_encodings[jpg].append(encoding)
 
-    # print("=====> read the number of encodings = ", len(img_to_encodings))
+    print("=====> read the number of encodings = ", len(img_to_encodings))
     return img_to_encodings
 
 #return img_to_encodings for which the images contain at least 1 ship
@@ -81,6 +81,7 @@ def get_data(img_dir, img_names, img_to_encodings):
     for img_name in img_names:
         mask = encodings_to_masks(img_to_encodings[img_name])
         mask = np.sum(mask, axis=0) # sum up masks (each mask is for one ship, to get the mask for the whole image, we need to sum up)
+        mask[mask > 0] = 1    #why we need this ? it seems in main() below, we don't have this step
         # mask = np.reshape(mask, [768,768, 1]) #todo: do we need this?
         masks.append(mask)
     masks = np.reshape(masks, (-1, 768, 768, 1))
@@ -91,12 +92,13 @@ def get_data(img_dir, img_names, img_to_encodings):
 
     
 
-
+np.set_printoptions(threshold=np.inf)
 
 if __name__ == '__main__':
     # img_to_encodings = read_encodings('data/train_ship_segmentations_v2.csv')
     # img_to_encodings = read_encodings('sample_train.csv') 
     img_to_encodings = read_encodings('encoding.csv') 
+    # img_name = '000194a2d.jpg'
     img_name = '000194a2d.jpg'
     mask = encodings_to_masks(img_to_encodings[img_name])
 
@@ -105,6 +107,7 @@ if __name__ == '__main__':
     # jpg = jpg_img_to_array('sample_jpgs/'+img_name)
 
     mask = np.sum(mask, axis=0) # sum up masks for each ship
+    print("mask=", mask)
     _, axarr = plt.subplots(1, 3)
     axarr[0].axis('off')
     axarr[1].axis('off')

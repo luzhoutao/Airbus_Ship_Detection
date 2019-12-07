@@ -1,15 +1,64 @@
 from __future__ import absolute_import
-from matplotlib import pyplot as plt
-from preprocess import get_data, read_encodings, read_nonempty_img_to_encodings
-from test_utils import IoU, IoU2, F2 #todo: integrate this to test()
+
+
+import tensorflow as tf
 
 import os
-import tensorflow as tf
 import numpy as np
 import random
-import datetime
-# import cv2
 
+import argparse
+from matplotlib import pyplot as plt
+
+from preprocess import get_data, read_encodings, read_nonempty_img_to_encodings
+from test_utils import IoU, F2
+
+from imageio import imwrite
+
+
+gpu_available = tf.test.is_gpu_available()
+print("GPU Available: ", gpu_available)
+
+## --------------------------------------------------------------------------------------
+
+parser = argparse.ArgumentParser(description='Airbus Ship Detection')
+
+parser.add_argument('--encoding-file', type=str, default='encoding.csv',
+                    help='path to encoding file')
+
+parser.add_argument('--img-dir', type=str, default='data',
+                    help='path to image directory')
+
+parser.add_argument('--mode', type=str, default='train',
+                    help='Can be "train" or "test"')
+
+parser.add_argument('--restore-checkpoint', action='store_true',
+                    help='Use this flag if you want to resuming training from a previously-saved checkpoint')
+
+parser.add_argument('--batch-size', type=int, default=4,
+                    help='Sizes of image batches fed through the network')
+
+parser.add_argument('--num-epochs', type=int, default=1,
+                    help='Number of passes through the training data to make before stopping')
+
+parser.add_argument('--learn-rate', type=float, default=1e-4,
+                    help='Learning rate for Adam optimizer')
+
+parser.add_argument('--dropout-rate', type=float, default=0.5,
+                    help='Dropout rate')
+
+parser.add_argument('--log-every', type=int, default=10,
+                    help='Print losses after every [this many] training iterations')
+
+parser.add_argument('--save-every', type=int, default=100,
+                    help='Save the state of the network after every [this many] training iterations')
+
+parser.add_argument('--device', type=str, default='GPU:0' if gpu_available else 'CPU:0',
+                    help='specific the device of computation eg. CPU:0, GPU:0, GPU:1, GPU:2, ... ')
+
+args = parser.parse_args()
+
+## --------------------------------------------------------------------------------------
 
 class Model(tf.keras.Model):
     def __init__(self, num_class, image_size):
@@ -18,12 +67,12 @@ class Model(tf.keras.Model):
         """
         super(Model, self).__init__()
 
-        self.num_class = num_class #?
+        self.num_class = num_class
         self.image_size = image_size
-        self.batch_size = 1
+        self.batch_size = args.batch_size
 
-        self.dropout_rate = 0.5
-        self.learning_rate = 1e-4
+        self.dropout_rate = args.dropout_rate
+        self.learning_rate = args.learn_rate
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
 
         # conv1
@@ -60,28 +109,22 @@ class Model(tf.keras.Model):
 
         # conv7
         self.up7 = tf.keras.layers.Conv2DTranspose(64, 3, strides=(2, 2), padding="same")
-        # up7 = tf.keras.layers.Conv2D(32, 2, activation='relu', padding='same')(up7)
         self.concat7 = tf.keras.layers.Concatenate(axis=3)
         self.conv7_1 = tf.keras.layers.Conv2D(32, 3, activation='relu', padding='same')
         self.conv7_2 = tf.keras.layers.Conv2D(32, 3, activation='relu', padding='same')
 
         # conv8
         self.up8 = tf.keras.layers.Conv2DTranspose(32, 3, strides=(2, 2), padding="same")
-        # up8 = tf.keras.layers.Conv2D(16, 2, activation='relu', padding='same')(up8)
         self.concat8 = tf.keras.layers.Concatenate(axis=3)
         self.conv8_1 = tf.keras.layers.Conv2D(16, 3, activation='relu', padding='same')
         self.conv8_2 = tf.keras.layers.Conv2D(16, 3, activation='relu', padding='same')
 
         # conv9
         self.up9 = tf.keras.layers.Conv2DTranspose(16, 3, strides=(2, 2), padding="same")
-        # up9 = tf.keras.layers.Conv2D(8, 2, activation='relu', padding='same')(up9) #todo
         self.concat9 = tf.keras.layers.Concatenate(axis=3)
         self.conv9_1 = tf.keras.layers.Conv2D(8, 3, activation='relu', padding='same')
         self.conv9_2 = tf.keras.layers.Conv2D(8, 3, activation='relu', padding='same')
 
-        # drop9   = tf.keras.layers.Dropout(self.dropout_rate)(conv9) #add an additional dropout here
-        # conv9 = tf.keras.layers.Conv2D(2, 3, activation='relu', padding='same')(conv9)
-        # conv10
         self.out = tf.keras.layers.Conv2D(self.num_class, 1, activation='sigmoid', padding='same')  # kernal_size = 1
 
     def call(self, inputs):
@@ -142,12 +185,9 @@ class Model(tf.keras.Model):
 		
 
     def loss(self, logits, labels):
-        #todo: PLEASE CHECK THIS FUNCTION! when I test, the loss is not decreasing, please help debug!
-        #todo: should we use this loss function?  
         labels = tf.dtypes.cast(labels, tf.float32)
         logits = tf.dtypes.cast(logits, tf.float32)
-        # loss = tf.nn.sigmoid_cross_entropy_with_logits(labels, logits)
-        loss = tf.keras.losses.binary_crossentropy(labels, logits, from_logits=True)
+        loss = tf.keras.losses.binary_crossentropy(labels, logits, from_logits=False)
         ave_loss = tf.reduce_mean(loss)
         return ave_loss
     def dice_loss(self, logits, labels):
@@ -158,96 +198,178 @@ class Model(tf.keras.Model):
         return 1 - (numerator + 1) / (denominator + 1)
 
 
-
-    def IoU(self, logits, labels):
-        lo1 = tf.reshape(logits, [-1,768,768])
-        la1 = tf.reshape(labels, [-1,768,768])
-        iou = IoU(lo1, la1, eps=1e-6)
-        return iou
-    def IoU2(self, logits, labels):
-        lo1 = tf.reshape(logits, [-1,768,768])
-        la1 = tf.reshape(labels, [-1,768,768])
-        iou = IoU2(lo1, la1)
-        return iou
-    
-
     def accuracy(self, logits, labels):
-        #logits : numpy of shape=(num_examples, 768,768, 1), dtype=float32
-        return np.mean(tf.cast(logits > 0.5, dtype=tf.dtypes.int32).numpy() == labels)
+        '''
+        Compute per-pixel accuracy and IOU score.
+        :param logits: logits returned from model
+        :param labels: label for inputs
+        :return: 
+        '''
+        accu = np.mean(tf.cast(logits > 0.5, dtype=tf.dtypes.int32).numpy() == labels)
+        iou = tf.reduce_mean(IoU(logits[:, :, :, 0], labels[:, :, :, 0])).numpy()
+        return accu, iou
 
 		
-def train(model, img_dir, train_img_names,img_to_encodings):
-    print("========> start training")
+def train(model, img_dir, train_img_names, img_to_encodings, manager):
     num_inputs = len(train_img_names)
-    steps = int(num_inputs/model.batch_size)
+    steps = int(num_inputs / model.batch_size)
 
     random.shuffle(train_img_names)
 
     for i in range(0, steps):
-        start = i *model.batch_size
-        end = (i+1)*model.batch_size
+        start = i * model.batch_size
+        end = (i + 1) * model.batch_size
         # now we load the actual content of the images, which is a huge amount of data
         inputs, labels = get_data(img_dir, train_img_names[start:end],img_to_encodings)
 
-
         with tf.GradientTape() as tape:
             logits = model(inputs)
-            # loss = model.loss(logits, labels)
-            loss = model.dice_loss(logits, labels)
+            loss = model.loss(logits, labels)
+            # loss = model.dice_loss(logits, labels)
 			
             gradients = tape.gradient(loss, model.trainable_variables)
             model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 				
-        if (i % 10 == 0):
-            train_acc = model.accuracy(logits, labels)
-            iou = model.IoU(logits, labels) 
-            iou2 = model.IoU2(logits, labels)                   
+        if i % args.log_every == 0:
+            train_acc, train_iou = model.accuracy(logits, labels)
+            print("========>Step %2d, accuracy = %3.4f, loss = %3.4f, IoU = %3.4f" % (i, train_acc, loss, train_iou))
 
-            # time = datetime.datetime.now()
-            # print(time)
-            print("Step %2d, accuracy=%3.2f, loss=%3.2f, iou=%3.5f" %( i, train_acc, loss, iou))
+        if i % args.save_every == 0:
+            manager.save()
 
 
 def test(model, img_dir, test_img_names, img_to_encodings):
     num_inputs = len(test_img_names)
-    steps = int(num_inputs/model.batch_size)
+    steps = int(num_inputs / model.batch_size)
 
-    accu = []
+    log_accu, log_iou = [], []
     for i in range(0, steps):
-        start = i *model.batch_size
-        end = (i+1)*model.batch_size
+        start = i * model.batch_size
+        end = (i + 1) * model.batch_size
         # now we load the actual content of the images, which is a huge amount of data
         inputs, labels = get_data(img_dir, test_img_names[start:end],img_to_encodings)
+        #have checked that labels are either matrix whose elements are either 0 or 1 
         logits = model(inputs)
-        accuracy = model.accuracy(logits, labels)
-        accu.append(accuracy)
-    return sum(accu)/len(accu)
+        #now we visualize the original images, the labels, and the outputs from our model
+        if i == 0:
+            count1 = 0
+            count0 = 0
+            countNot0Not1 = 0
+            labels_copy = labels.copy()
+            labels_copy = np.reshape(labels_copy, (-1))
+            for j in labels_copy:
+                if j != 0:
+                    count1+=1
+                elif j == 0:
+                    count0+=1
+                else:
+                    countNot0Not1+=1
+            print("count0= %3d, count1=%3d, countOther=%3d" %(count0, count1, countNot0Not1))
+            
+        print("===============> Visualize: input, label, output: ")
+        visualize_results(inputs, labels, logits)
+
+        accuracy, iou = model.accuracy(logits, labels)
+        log_accu.append(accuracy)
+        log_iou.append(iou)
+    return np.mean(log_accu), np.mean(log_iou)
 
 
-def visualize_results(image_inputs):
-    #todo
-    pass
+def visualize_results(inputs, labels, outputs):
+    # Rescale the inputs images from (0, 1) to (0, 255)
+    inputs = inputs * 255
+    labels = labels * 255
+    
+    outputs = tf.cast(outputs > 0.5, dtype=tf.dtypes.float32)
+    outputs = outputs * 255
+    # Convert to uint8
+    inputs = inputs.astype(np.uint8)
+    # Save images to disk
+    for i in range(0, args.batch_size):
+        inputs_i = inputs[i]
+        # s = args.out_dir+'/'+str(i)+'.png'
+        s = 'input' + str(i)+'.png'
+        imwrite(s, inputs_i)
+        
+        labels_i = labels[i]
+        s =  'label' + str(i)+'.png'
+        imwrite(s, labels_i)
 
+        outputs_i = outputs[i]
+        s =  'output' + str(i)+'.png'
+        imwrite(s, outputs_i)
+
+
+
+
+    
+
+def balance_sample_dataset(img_to_encodings):
+    empty_images, nonempty_images = [], []
+
+    for name, encodings in img_to_encodings.items():
+        if len(encodings) == 1 and encodings[0] == "\n":
+            empty_images.append(name)
+        else:
+            nonempty_images.append(name)
+
+    img_names = []
+    img_names.extend(random.sample(empty_images, len(nonempty_images)))
+    img_names.extend(nonempty_images)
+
+    return img_names
+#when use the above func, shows error. so hacked it. 
+def balance_sample_dataset1(img_to_encodings):
+    nonempty_images = []
+
+    for name, encodings in img_to_encodings.items():
+        
+        nonempty_images.append(name)
+
+    return nonempty_images
 
 def main():
+    VALIDATION_RATE = 0.01
     #step1: get the training data and testing data
-    # img_to_encodings = read_encodings('encoding.csv')
-    print("===>start reading data")
-    nonempty_img_to_encodings = read_nonempty_img_to_encodings('encoding.csv')# here we only get non empty images and its encodings
-    img_names = list(nonempty_img_to_encodings.keys()) # a list of image names as input, images will not be loaded until needed
-    train_img_names = img_names[:3000]
-    test_img_names = img_names[3000:4000]
-    print("===>finish reading data")
+    # img_to_encodings = read_encodings(args.encoding_file)
+    # img_names = balance_sample_dataset(img_to_encodings)
+    img_to_encodings = read_nonempty_img_to_encodings(args.encoding_file)
+    img_names = balance_sample_dataset1(img_to_encodings)
+    N = len(img_names)
 
-    #step2: initialize and train the model
+    # step2: initialize and train the model
     model = Model(num_class=1, image_size=768)
-    epochs = 1 #TA says 1 epoch is fine
-    for _ in range(epochs):
-        train(model, 'data', train_img_names, nonempty_img_to_encodings)
-    #step3: test the model
-    print("========> Start Test:")
-    accuracy = test(model, 'data', test_img_names, nonempty_img_to_encodings)
-    print("========> Test Accuracy: %.4f" % accuracy)
+
+    # For saving/loading models
+    checkpoint_dir = './checkpoints'
+    checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
+    checkpoint = tf.train.Checkpoint(model=model)
+    manager = tf.train.CheckpointManager(checkpoint, checkpoint_dir, max_to_keep=3)
+
+    if args.mode == "test" or args.restore_checkpoint:
+        # restores the latest checkpoint using from the manager
+        checkpoint.restore(manager.latest_checkpoint)
+
+    if args.mode == "train":
+        train_img_names = img_names[int(N * VALIDATION_RATE):]
+        val_img_names = img_names[:int(N * VALIDATION_RATE)]
+
+        for e in range(args.num_epochs):
+            print("Epoch %d:" % e)
+            train(model, args.img_dir, train_img_names, img_to_encodings, manager)
+
+        #step3: test the model
+        accuracy, iou = test(model, args.img_dir, val_img_names, img_to_encodings)
+        print("========> Validation: Accuracy = %.4f, IoU = %.4f" % (accuracy, iou))
+
+    if args.mode == "test":
+        # val_img_names = img_names[:int(N * VALIDATION_RATE)]
+        val_img_names = img_names[:4]
+        
+        print("====> Test images total num = ", len(val_img_names))
+
+        accuracy, iou = test(model, args.img_dir, val_img_names, img_to_encodings)
+        print("========> Test: Accuracy = %.4f, IoU = %.4f" % (accuracy, iou))
 
 
 if __name__ == '__main__':
