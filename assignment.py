@@ -9,7 +9,7 @@ import argparse
 from matplotlib import pyplot as plt
 
 from preprocess import get_data, read_encodings
-from test_utils import IoU, F2, recall
+from test_utils import IoU, F2, recall, precision
 
 
 gpu_available = tf.test.is_gpu_available()
@@ -237,8 +237,9 @@ def train(model, img_dir, train_img_names, img_to_encodings, manager):
         if i % args.log_every == 0:
             train_acc, train_iou = model.accuracy(logits, labels)
             r = tf.reduce_mean(recall(logits, labels)).numpy()
-            print("========>Step %2d, accuracy = %3.4f, dice loss = %3.4f, IoU = %3.4f, recall = %3.4f" %
-                  (i, train_acc, loss, train_iou, r))
+            p = tf.reduce_mean(precision(logits, labels)).numpy()
+            print("========>Step %2d, accuracy = %3.4f, dice loss = %3.4f, IoU = %3.4f, recall = %3.4f, precision = %3.4f" %
+                  (i, train_acc, loss, train_iou, r, p))
 
         if i % args.save_every == 0:
             manager.save()
@@ -280,12 +281,18 @@ def balance_sample_dataset(img_to_encodings):
 
     return img_names
 
+
+def filter_dataset(img_to_encodings):
+    return [ name for name, encodings in img_to_encodings.items()
+             if len(encodings) > 1 or encodings[0] != "\n"]
+
 def main():
     VALIDATION_RATE = 0.1
 
     #step1: get the training data and testing data
     img_to_encodings = read_encodings(args.encoding_file)
-    img_names = balance_sample_dataset(img_to_encodings)
+    # img_names = balance_sample_dataset(img_to_encodings)
+    img_names = filter_dataset(img_to_encodings)
     N = len(img_names)
 
     # step2: initialize and train the model
