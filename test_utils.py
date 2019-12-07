@@ -18,6 +18,23 @@ def IoU(probs, labels, eps=1e-6):
     return (intersection + eps) / (union + eps)
 
 
+def recall(probs, labels, eps=1e-6):
+    '''
+    Compute IoU for each input in batch. 
+
+    [tf.keras.metrics.MeanIoU computes mean IoU over classes may not be proper in our case.]
+    :param probs: float tensor, predicted segmentation probabilities [batch_size x height x width].
+    :param labels: integer tensor, segmentation mask labels [batch_size x height x width]
+    :return: IoU of each input image as a tensor [batch_size]
+    '''
+    prediction = tf.cast(probs > 0.5, dtype=tf.dtypes.float32)
+    labels = tf.cast(labels, dtype=tf.dtypes.float32)
+
+    tp = tf.reduce_sum(labels * prediction, axis=[1, 2])
+    positive = tf.reduce_sum(labels, axis=[1, 2])
+    return (tp + eps) / (positive + eps)
+
+
 def F2(probs,
        labels,
        thresholds=[0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95],
