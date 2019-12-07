@@ -285,18 +285,24 @@ def visualize_results(inputs, labels, outputs):
     # Convert to uint8
     inputs = inputs.astype(np.uint8)
     # Save images to disk
+    rgb = np.asarray([[i, i, i] for i in range(256)], dtype=np.int64)
     for i in range(0, args.batch_size):
         inputs_i = inputs[i]
         # s = args.out_dir+'/'+str(i)+'.png'
         s = 'input' + str(i)+'.png'
         imwrite(s, inputs_i)
-        
-        labels_i = labels[i]
+
+        labels_i = labels[i].astype(np.int64)
+        labels_i = np.reshape(labels_i, (768, 768))
+        labels_i = np.take(rgb, labels_i, axis=0)
         s =  'label' + str(i)+'.png'
         imwrite(s, labels_i)
 
-        outputs_i = outputs[i]
+        outputs_i = outputs[i].numpy().astype(np.int64)
+        outputs_i = np.reshape(outputs_i, (768, 768))
+        outputs_i = np.take(rgb, outputs_i, axis=0)
         s =  'output' + str(i)+'.png'
+        # outputs_i = [[i, i, i] for i in outputs_i]
         imwrite(s, outputs_i)
 
 
