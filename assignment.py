@@ -23,7 +23,7 @@ print("GPU Available: ", gpu_available)
 
 parser = argparse.ArgumentParser(description='Airbus Ship Detection')
 
-parser.add_argument('--encoding-file', type=str, default='encoding.csv',
+parser.add_argument('--encoding-file', type=str, default='sample_train.csv',
                     help='path to encoding file')
 
 parser.add_argument('--img-dir', type=str, default='data',
@@ -55,6 +55,10 @@ parser.add_argument('--save-every', type=int, default=100,
 
 parser.add_argument('--device', type=str, default='GPU:0' if gpu_available else 'CPU:0',
                     help='specific the device of computation eg. CPU:0, GPU:0, GPU:1, GPU:2, ... ')
+
+parser.add_argument('--out-dir', type=str, default='img',
+                    help='store the images from visualization')
+
 
 args = parser.parse_args()
 
@@ -288,20 +292,20 @@ def visualize_results(inputs, labels, outputs):
     for i in range(0, args.batch_size):
         inputs_i = inputs[i]
         # s = args.out_dir+'/'+str(i)+'.png'
-        s = 'input' + str(i)+'.png'
+        s = args.out_dir+'/'+'input' + str(i)+'.png'
         imwrite(s, inputs_i)
 
         labels_i = labels[i]
         labels_i=np.append(np.append(labels_i, labels_i, axis=-1), labels_i, axis=-1)
         labels_i = labels_i.astype(np.uint8)
-        s =  'label' + str(i)+'.png'
+        s = args.out_dir+'/'+ 'label' + str(i)+'.png'
         assert labels_i.shape==(768,768,3)
         imwrite(s, labels_i)
 
         outputs_i = outputs[i]
         outputs_i=np.append(np.append(outputs_i, outputs_i, axis=-1), outputs_i, axis=-1)
         outputs_i = outputs_i.astype(np.uint8)
-        s =  'output' + str(i)+'.png'
+        s =  args.out_dir+'/'+'output' + str(i)+'.png'
         assert outputs_i.shape==(768,768,3)
         # print('output sum: ', np.sum(outputs_i))
         imwrite(s, outputs_i)
