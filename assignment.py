@@ -158,35 +158,38 @@ class Model(tf.keras.Model):
 
         # conv7
         up7 = self.up7(conv6)
-        # up7 = tf.keras.layers.Conv2D(32, 2, activation='relu', padding='same')(up7)
         concat7 = self.concat7([conv3, up7])
         conv7 = self.conv7_2(self.conv7_1(concat7))
 
         # conv8
         up8 = self.up8(conv7)
-        # up8 = tf.keras.layers.Conv2D(16, 2, activation='relu', padding='same')(up8)
         concat8 = self.concat8([conv2, up8])
         conv8 = self.conv8_2(self.conv8_1(concat8))
 
         # conv9
         up9 = self.up9(conv8)
-        # up9 = tf.keras.layers.Conv2D(8, 2, activation='relu', padding='same')(up9) #todo
         concat9 = self.concat9([conv1,up9])
         conv9 = self.conv9_2(self.conv9_1(concat9))
 
-        # drop9   = tf.keras.layers.Dropout(self.dropout_rate)(conv9) #add an additional dropout here 
-        # conv9 = tf.keras.layers.Conv2D(2, 3, activation='relu', padding='same')(conv9)
-        # conv10
         logits = self.out(conv9) #kernal_size = 1
         return logits
 		
 
     def loss(self, logits, labels):
+        print(logits.shape, labels.shape)
+        input()
         labels = tf.dtypes.cast(labels, tf.float32)
         logits = tf.dtypes.cast(logits, tf.float32)
         loss = tf.keras.losses.binary_crossentropy(labels, logits, from_logits=False)
         ave_loss = tf.reduce_mean(loss)
         return ave_loss
+
+
+    def dice_score(self, logits, labels):
+        intersection = tf.reduce_sum(logits * labels, axis=[1, 2, 3])
+        union = tf.reduce_sum(logits + labels, axis=[1, 2, 3])
+        smooth = 1
+        return tf.reduce_mean((2 * intersection + smooth) / (union + smooth))
 
 
     def accuracy(self, logits, labels):
@@ -215,14 +218,14 @@ def train(model, img_dir, train_img_names, img_to_encodings, manager):
 
         with tf.GradientTape() as tape:
             logits = model(inputs)
-            loss = model.loss(logits, labels)
+            loss = -model.dice_score(logits, labels)
 			
             gradients = tape.gradient(loss, model.trainable_variables)
             model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 				
         if i % args.log_every == 0:
             train_acc, train_iou = model.accuracy(logits, labels)
-            print("========>Step %2d, accuracy = %3.4f, loss = %3.4f, IoU = %3.4f" % (i, train_acc, loss, train_iou))
+            print("========>Step %2d, accuracy = %3.4f, dice loss = %3.4f, IoU = %3.4f" % (i, train_acc, loss, train_iou))
 
         if i % args.save_every == 0:
             manager.save()
