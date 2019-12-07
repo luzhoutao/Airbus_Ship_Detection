@@ -7,6 +7,7 @@ import numpy as np
 import random
 import argparse
 from matplotlib import pyplot as plt
+from imageio import imwrite
 
 from preprocess import get_data, read_encodings
 from test_utils import IoU, F2, recall, precision
@@ -43,7 +44,7 @@ parser.add_argument('--learn-rate', type=float, default=1e-4,
 parser.add_argument('--dropout-rate', type=float, default=0.5,
                     help='Dropout rate')
 
-parser.add_argument('--log-every', type=int, default=10,
+parser.add_argument('--log-every', type=int, default=1,
                     help='Print losses after every [this many] training iterations')
 
 parser.add_argument('--save-every', type=int, default=100,
@@ -244,6 +245,8 @@ def train(model, img_dir, train_img_names, img_to_encodings, manager):
         if i % args.save_every == 0:
             manager.save()
 
+            visualize_results(inputs, labels, logits)
+
 
 def test(model, img_dir, test_img_names, img_to_encodings):
     num_inputs = len(test_img_names)
@@ -262,9 +265,30 @@ def test(model, img_dir, test_img_names, img_to_encodings):
     return np.mean(log_accu), np.mean(log_iou)
 
 
-def visualize_results(image_inputs):
-    #todo
-    pass
+def visualize_results(inputs, labels, outputs):
+    print("visualizing...")
+    # Rescale the inputs images from (0, 1) to (0, 255)
+    inputs = inputs * 255
+    labels = labels * 255
+
+    outputs = tf.cast(outputs > 0.5, dtype=tf.dtypes.float32)
+    outputs = outputs * 255
+    # Convert to uint8
+    inputs = inputs.astype(np.uint8)
+    # Save images to disk
+    for i in range(0, args.batch_size):
+        inputs_i = inputs[i]
+        # s = args.out_dir+'/'+str(i)+'.png'
+        s = 'input' + str(i) + '.png'
+        imwrite(s, inputs_i)
+
+        labels_i = labels[i]
+        s = 'label' + str(i) + '.png'
+        imwrite(s, labels_i)
+
+        outputs_i = outputs[i]
+        s = 'output' + str(i) + '.png'
+        imwrite(s, outputs_i)
 
 def balance_sample_dataset(img_to_encodings):
     empty_images, nonempty_images = [], []
