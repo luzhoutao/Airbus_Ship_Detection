@@ -1,11 +1,11 @@
 # Airbus_Ship_Detection
 
-<<<<<<< HEAD
 Changed the U-Net model:
 - 1. have changed UpSampling to Conv2DTranspose
 - 2. rename sample_train to data, to fit with the format on gcp
 - 3. tried dice_loss instead of binary-cross-entropy loss, but still reaching accuracy of 1 too fast, and then iou stay at 0: this post (https://www.kaggle.com/iafoss/unet34-dice-0-87/notebook) mentions that we might need a mixed loss function. binary-cross-entropy loss may not work well for images where the mask is sparse.
 - 4. tried to get the img encodings where the images have at least one ship in it, rational: want to see if we delete all empty images, can we get a better performance.
+- 5. add visualization method to visualize in test
 
 
 TODO
@@ -16,16 +16,3 @@ TODO
   - U-Net 
   - 2U-Net
 - Data preprocess / augment
-=======
-Model:
-- U-Net
-
-Changes:
-- Use Conv2DTranspose instead of UnSampling
-
-Rationale:
-- learn how to unsample instead of just replicating
-- but will result in more trainable_variable.
-
-Result[TODO]
->>>>>>> 3f79c214b5a944ec8b8c673fbd52447a1d0daf6c
