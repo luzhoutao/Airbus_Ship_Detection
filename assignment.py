@@ -285,24 +285,25 @@ def visualize_results(inputs, labels, outputs):
     # Convert to uint8
     inputs = inputs.astype(np.uint8)
     # Save images to disk
-    rgb = np.asarray([[i, i, i] for i in range(256)], dtype=np.int64)
     for i in range(0, args.batch_size):
         inputs_i = inputs[i]
         # s = args.out_dir+'/'+str(i)+'.png'
         s = 'input' + str(i)+'.png'
         imwrite(s, inputs_i)
 
-        labels_i = labels[i].astype(np.int64)
-        labels_i = np.reshape(labels_i, (768, 768))
-        labels_i = np.take(rgb, labels_i, axis=0)
+        labels_i = labels[i]
+        labels_i=np.append(np.append(labels_i, labels_i, axis=-1), labels_i, axis=-1)
+        labels_i = labels_i.astype(np.uint8)
         s =  'label' + str(i)+'.png'
+        assert labels_i.shape==(768,768,3)
         imwrite(s, labels_i)
 
-        outputs_i = outputs[i].numpy().astype(np.int64)
-        outputs_i = np.reshape(outputs_i, (768, 768))
-        outputs_i = np.take(rgb, outputs_i, axis=0)
+        outputs_i = outputs[i]
+        outputs_i=np.append(np.append(outputs_i, outputs_i, axis=-1), outputs_i, axis=-1)
+        outputs_i = outputs_i.astype(np.uint8)
         s =  'output' + str(i)+'.png'
-        # outputs_i = [[i, i, i] for i in outputs_i]
+        assert outputs_i.shape==(768,768,3)
+        # print('output sum: ', np.sum(outputs_i))
         imwrite(s, outputs_i)
 
 
