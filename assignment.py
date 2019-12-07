@@ -56,6 +56,17 @@ args = parser.parse_args()
 
 ## --------------------------------------------------------------------------------------
 
+# Numerically stable logarithm function
+def log(x):
+    """
+    Finds the stable log of x
+
+    :param x: 
+    """
+    return tf.math.log(tf.maximum(x, 1e-5))
+
+## --------------------------------------------------------------------------------------
+
 
 class Model(tf.keras.Model):
     def __init__(self, num_class, image_size):
@@ -218,7 +229,7 @@ def train(model, img_dir, train_img_names, img_to_encodings, manager):
 
         with tf.GradientTape() as tape:
             logits = model(inputs)
-            loss = -model.dice_score(logits, labels)
+            loss = -log(model.dice_score(logits, labels))
 			
             gradients = tape.gradient(loss, model.trainable_variables)
             model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
