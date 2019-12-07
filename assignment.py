@@ -238,7 +238,7 @@ def train(model, img_dir, train_img_names, img_to_encodings, manager):
             train_acc, train_iou = model.accuracy(logits, labels)
             r = tf.reduce_mean(recall(logits, labels)).numpy()
             p = tf.reduce_mean(precision(logits, labels)).numpy()
-            print("========>Step %2d, accuracy = %3.4f, dice loss = %3.4f, IoU = %3.4f, recall = %3.4f, precision = %3.4f" %
+            print("========>Step %2d, accuracy = %3.4f, loss = %3.4f, IoU = %3.4f, recall = %3.4f, precision = %3.4f" %
                   (i, train_acc, loss, train_iou, r, p))
 
         if i % args.save_every == 0:
