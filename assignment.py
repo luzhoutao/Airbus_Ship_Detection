@@ -138,7 +138,7 @@ class Model(tf.keras.Model):
         Runs a forward pass on an input batch of images.
         :param inputs: images, shape of (num_inputs, ?, ?, ?);
         during training, the shape is (batch_size, ?, ?, ?)
-        :return: logits - a matrix of shape (num_inputs, ?, ?, ?); during training, it would be (batch_size, ?, ?, ?)
+        :return: probs - a matrix of shape (num_inputs, ?, ?, ?); during training, it would be (batch_size, ?, ?, ?)
         """
 
         # conv1
@@ -186,33 +186,33 @@ class Model(tf.keras.Model):
         # drop9   = tf.keras.layers.Dropout(self.dropout_rate)(conv9) #add an additional dropout here 
         # conv9 = tf.keras.layers.Conv2D(2, 3, activation='relu', padding='same')(conv9)
         # conv10
-        logits = self.out(conv9) #kernal_size = 1
-        return logits
+        probs = self.out(conv9) #kernal_size = 1
+        return probs
 		
 
-    def loss(self, logits, labels):
+    def loss(self, probs, labels):
         labels = tf.dtypes.cast(labels, tf.float32)
-        logits = tf.dtypes.cast(logits, tf.float32)
-        loss = tf.keras.losses.binary_crossentropy(labels, logits, from_logits=False)
+        probs = tf.dtypes.cast(probs, tf.float32)
+        loss = tf.keras.losses.binary_crossentropy(labels, probs, from_logits=False)
         ave_loss = tf.reduce_mean(loss)
         return ave_loss
-    def dice_loss(self, logits, labels):
+    def dice_loss(self, probs, labels):
         labels = tf.dtypes.cast(labels, tf.float32)
-        logits = tf.dtypes.cast(logits, tf.float32)
-        numerator = 2 * tf.reduce_sum(labels * logits, axis=[1, 2])
-        denominator = tf.reduce_sum(labels + logits, axis=[1, 2])
+        probs = tf.dtypes.cast(probs, tf.float32)
+        numerator = 2 * tf.reduce_sum(labels * probs, axis=[1, 2])
+        denominator = tf.reduce_sum(labels + probs, axis=[1, 2])
         return 1 - (numerator + 1) / (denominator + 1)
 
 
-    def accuracy(self, logits, labels):
+    def accuracy(self, probs, labels):
         '''
         Compute per-pixel accuracy and IOU score.
-        :param logits: logits returned from model
+        :param probs: probs returned from model
         :param labels: label for inputs
         :return: 
         '''
-        accu = np.mean(tf.cast(logits > 0.5, dtype=tf.dtypes.int32).numpy() == labels)
-        iou = tf.reduce_mean(IoU(logits[:, :, :, 0], labels[:, :, :, 0])).numpy()
+        accu = np.mean(tf.cast(probs > 0.5, dtype=tf.dtypes.int32).numpy() == labels)
+        iou = tf.reduce_mean(IoU(probs[:, :, :, 0], labels[:, :, :, 0])).numpy()
         return accu, iou
 
 		
@@ -229,17 +229,17 @@ def train(model, img_dir, train_img_names, img_to_encodings, manager):
         inputs, labels = get_data(img_dir, train_img_names[start:end],img_to_encodings)
 
         with tf.GradientTape() as tape:
-            logits = model(inputs)
-            # loss = model.loss(logits, labels)
-            loss = model.dice_loss(logits, labels)
+            probs = model(inputs)
+            # loss = model.loss(probs, labels)
+            loss = model.dice_loss(probs, labels)
 			
             gradients = tape.gradient(loss, model.trainable_variables)
             model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 				
         if i % args.log_every == 0:
-            train_acc, train_iou = model.accuracy(logits, labels)
-            r = tf.reduce_mean(recall(logits, labels)).numpy()
-            p = tf.reduce_mean(precision(logits, labels)).numpy()
+            train_acc, train_iou = model.accuracy(probs, labels)
+            r = tf.reduce_mean(recall(probs, labels)).numpy()
+            p = tf.reduce_mean(precision(probs, labels)).numpy()
             print("========>Step %2d, accuracy = %3.4f, loss = %3.4f, IoU = %3.4f, recall = %3.4f, precision = %3.4f" %
                   (i, train_acc, loss, train_iou, r, p))
 
@@ -258,7 +258,7 @@ def test(model, img_dir, test_img_names, img_to_encodings):
         # now we load the actual content of the images, which is a huge amount of data
         inputs, labels = get_data(img_dir, test_img_names[start:end],img_to_encodings)
         #have checked that labels are either matrix whose elements are either 0 or 1 
-        logits = model(inputs)
+        probs = model(inputs)
         #now we visualize the original images, the labels, and the outputs from our model
         if i == 0:
             count1 = 0
@@ -276,9 +276,9 @@ def test(model, img_dir, test_img_names, img_to_encodings):
             print("count0= %3d, count1=%3d, countOther=%3d" %(count0, count1, countNot0Not1))
             
         print("===============> Visualize: input, label, output: ")
-        visualize_results(inputs, labels, logits)
+        visualize_results(inputs, labels, probs)
 
-        accuracy, iou = model.accuracy(logits, labels)
+        accuracy, iou = model.accuracy(probs, labels)
         log_accu.append(accuracy)
         log_iou.append(iou)
     return np.mean(log_accu), np.mean(log_iou)
@@ -387,6 +387,15 @@ def main():
         accuracy, iou = test(model, args.img_dir, val_img_names, img_to_encodings)
         print("========> Test: Accuracy = %.4f, IoU = %.4f" % (accuracy, iou))
 
+# restore the classifier for ship vs land from checkpoints
+def read_saved_classifier():
+    model = Classifier()
+    checkpoint_dir = './ship_land_classifier/checkpoints'
+    checkpoint = tf.train.Checkpoint(model=model)
+    manager = tf.train.CheckpointManager(checkpoint, checkpoint_dir, max_to_keep=3)
+    print("Reading checkpoints")
+    checkpoint.restore(manager.latest_checkpoint)
+    return model
 
 if __name__ == '__main__':
     main()
