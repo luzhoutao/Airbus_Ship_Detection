@@ -246,10 +246,29 @@ def train(model, img_dir, train_img_names, img_to_encodings, manager):
         if i % args.save_every == 0:
             manager.save()
 
+def classify(classifier, inputs, probs):
+    batch_size = inputs.shape[0]
+    zeros_or_ones = [tf.zeros((256, 256, 1)), tf.ones((256, 256, 1))]
+    rows =[]
+    for i in range(3):
+        row = []
+        for j in range(3):
+            cell = classifier.call(inputs[:,i*256:(i+1)*256,j*256:(j+1)*256,:]) # [batch size, 2]
+            cell = tf.argmax(cell, axis=1) # [batch size, 1]
+            cell = tf.reshape(cell, (-1,))
+            cell = tf.gather(zeros_or_ones, cell)
+            row.append(cell)
+
+        row = tf.concat(row, axis=2)
+        rows.append(row)
+    mask = tf.concat(rows, axis=1)
+    return probs*mask
 
 def test(model, img_dir, test_img_names, img_to_encodings):
     num_inputs = len(test_img_names)
     steps = int(num_inputs / model.batch_size)
+
+    classifier = read_saved_classifier()
 
     log_accu, log_iou = [], []
     for i in range(0, steps):
@@ -259,6 +278,7 @@ def test(model, img_dir, test_img_names, img_to_encodings):
         inputs, labels = get_data(img_dir, test_img_names[start:end],img_to_encodings)
         #have checked that labels are either matrix whose elements are either 0 or 1 
         probs = model(inputs)
+        probs = classify(classifier, inputs, probs)
         #now we visualize the original images, the labels, and the outputs from our model
         if i == 0:
             count1 = 0
@@ -275,10 +295,12 @@ def test(model, img_dir, test_img_names, img_to_encodings):
                     countNot0Not1+=1
             print("count0= %3d, count1=%3d, countOther=%3d" %(count0, count1, countNot0Not1))
             
-        print("===============> Visualize: input, label, output: ")
-        visualize_results(inputs, labels, probs)
+        if i<4: #visualize only the first 4 results
+            print("===============> Visualize: input, label, output: ")
+            visualize_results(inputs, labels, probs)
 
         accuracy, iou = model.accuracy(probs, labels)
+        print("iou:", iou)
         log_accu.append(accuracy)
         log_iou.append(iou)
     return np.mean(log_accu), np.mean(log_iou)
