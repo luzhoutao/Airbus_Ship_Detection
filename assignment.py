@@ -15,6 +15,8 @@ from test_utils import IoU, F2, recall, precision
 
 from imageio import imwrite
 
+from ship_land_classifier.model import Classifier
+
 
 gpu_available = tf.test.is_gpu_available()
 print("GPU Available: ", gpu_available)
@@ -228,8 +230,8 @@ def train(model, img_dir, train_img_names, img_to_encodings, manager):
 
         with tf.GradientTape() as tape:
             logits = model(inputs)
-            loss = model.loss(logits, labels)
-            # loss = model.dice_loss(logits, labels)
+            # loss = model.loss(logits, labels)
+            loss = model.dice_loss(logits, labels)
 			
             gradients = tape.gradient(loss, model.trainable_variables)
             model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
