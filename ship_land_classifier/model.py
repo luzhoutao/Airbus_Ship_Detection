@@ -29,7 +29,7 @@ class Classifier(tf.keras.Model):
     def call(self, inputs):
         """
         :param inputs: [batch_size, 256, 256, 3]
-        :return: probabilities of shape [batch_size, 2]
+        :return: probabilities of shape [batch_size, num_classes]
         """
         output1 = self.pool1(relu(self.batch_norm1(self.conv1(inputs))))
         output2 = self.pool2(relu(self.batch_norm2(self.conv2(output1))))
@@ -43,9 +43,19 @@ class Classifier(tf.keras.Model):
 
     def accuracy(self, probs, labels):
         """
-        :param probs: [batch_size, 2]
-        :param labels: [batch_size, 2]
+        :param probs: [batch_size, num_classes]
+        :param labels: [batch_size, num_classes]
         :return:
         """
         correct_predictions = tf.equal(tf.argmax(probs, 1), tf.argmax(labels, 1))
         return tf.reduce_mean(tf.cast(correct_predictions, tf.float32))
+
+    # def binary_accuracy(self, probs, labels):
+    #     # only check whether a ship appears, so separate classes into 2 group: [0~2] vs [3~6]
+    #     """
+    #     :param probs: [batch_size, 2]
+    #     :param labels: [batch_size, 2]
+    #     :return:
+    #     """
+    #     correct_predictions = tf.equal(tf.argmax(probs, 1)>2, tf.argmax(labels, 1)>2)
+    #     return tf.reduce_mean(tf.cast(correct_predictions, tf.float32))

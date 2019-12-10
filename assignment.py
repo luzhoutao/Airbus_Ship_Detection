@@ -247,14 +247,16 @@ def train(model, img_dir, train_img_names, img_to_encodings, manager):
             manager.save()
 
 def classify(classifier, inputs, probs):
-    batch_size = inputs.shape[0]
     zeros_or_ones = [tf.zeros((256, 256, 1)), tf.ones((256, 256, 1))]
     rows =[]
     for i in range(3):
         row = []
         for j in range(3):
-            cell = classifier.call(inputs[:,i*256:(i+1)*256,j*256:(j+1)*256,:]) # [batch size, 2]
-            cell = tf.argmax(cell, axis=1) # [batch size, 1]
+            cell = classifier.call(inputs[:,i*256:(i+1)*256,j*256:(j+1)*256,:]) # [batch size, num_classes]
+            # cell = tf.argmax(cell, axis=1) # [batch size, 1]
+            cell = cell*[-5, -0.2, -1, 2, 3, 1.5,1.5] # this weights for 7 classes can be fine-tuned
+            cell = tf.reduce_sum(cell, axis=1)
+            cell = tf.cast(cell>0, tf.int64)
             cell = tf.reshape(cell, (-1,))
             cell = tf.gather(zeros_or_ones, cell)
             row.append(cell)
@@ -271,6 +273,7 @@ def test(model, img_dir, test_img_names, img_to_encodings):
     classifier = read_saved_classifier()
 
     log_accu, log_iou = [], []
+    filtered_accus, filtered_ious = [], [] # filtered by CNN classifier
     for i in range(0, steps):
         start = i * model.batch_size
         end = (i + 1) * model.batch_size
@@ -278,7 +281,9 @@ def test(model, img_dir, test_img_names, img_to_encodings):
         inputs, labels = get_data(img_dir, test_img_names[start:end],img_to_encodings)
         #have checked that labels are either matrix whose elements are either 0 or 1 
         probs = model(inputs)
-        probs = classify(classifier, inputs, probs)
+        # visualize_results(inputs, labels, probs, out_dir='before')
+        filtered_probs = classify(classifier, inputs, probs)
+        # visualize_results(inputs, labels, filtered_probs, out_dir='after')
         #now we visualize the original images, the labels, and the outputs from our model
         if i == 0:
             count1 = 0
@@ -295,18 +300,22 @@ def test(model, img_dir, test_img_names, img_to_encodings):
                     countNot0Not1+=1
             print("count0= %3d, count1=%3d, countOther=%3d" %(count0, count1, countNot0Not1))
             
-        if i<4: #visualize only the first 4 results
-            print("===============> Visualize: input, label, output: ")
-            visualize_results(inputs, labels, probs)
+        # print("===============> Visualize: input, label, output: ")
+        # visualize_results(inputs, labels, probs)
 
         accuracy, iou = model.accuracy(probs, labels)
-        print("iou:", iou)
+        filtered_accuracy, filtered_iou = model.accuracy(filtered_probs, labels)
+        print("iou:", iou,"; iou after filter:", filtered_iou)
         log_accu.append(accuracy)
         log_iou.append(iou)
-    return np.mean(log_accu), np.mean(log_iou)
+        filtered_accus.append(filtered_accuracy)
+        filtered_ious.append(filtered_iou)
+    return np.mean(log_accu), np.mean(log_iou), np.mean(filtered_accus), np.mean(filtered_ious)
 
 
-def visualize_results(inputs, labels, outputs):
+def visualize_results(inputs, labels, outputs, out_dir=args.out_dir):
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
     # Rescale the inputs images from (0, 1) to (0, 255)
     inputs = inputs * 255
     labels = labels * 255
@@ -316,23 +325,23 @@ def visualize_results(inputs, labels, outputs):
     # Convert to uint8
     inputs = inputs.astype(np.uint8)
     # Save images to disk
-    for i in range(0, args.batch_size):
+    for i in range(0, len(inputs)):
         inputs_i = inputs[i]
         # s = args.out_dir+'/'+str(i)+'.png'
-        s = args.out_dir+'/'+'input' + str(i)+'.png'
+        s = out_dir+'/'+'input' + str(i)+'.png'
         imwrite(s, inputs_i)
 
         labels_i = labels[i]
         labels_i=np.append(np.append(labels_i, labels_i, axis=-1), labels_i, axis=-1)
         labels_i = labels_i.astype(np.uint8)
-        s = args.out_dir+'/'+ 'label' + str(i)+'.png'
+        s = out_dir+'/'+ 'label' + str(i)+'.png'
         assert labels_i.shape==(768,768,3)
         imwrite(s, labels_i)
 
         outputs_i = outputs[i]
         outputs_i=np.append(np.append(outputs_i, outputs_i, axis=-1), outputs_i, axis=-1)
         outputs_i = outputs_i.astype(np.uint8)
-        s =  args.out_dir+'/'+'output' + str(i)+'.png'
+        s =  out_dir+'/'+'output' + str(i)+'.png'
         assert outputs_i.shape==(768,768,3)
         # print('output sum: ', np.sum(outputs_i))
         imwrite(s, outputs_i)
@@ -386,7 +395,7 @@ def main():
 
     if args.mode == "test" or args.restore_checkpoint:
         # restores the latest checkpoint using from the manager
-        checkpoint.restore(manager.latest_checkpoint)
+        checkpoint.restore(manager.latest_checkpoint).expect_partial()
 
     if args.mode == "train":
         train_img_names = img_names[int(N * VALIDATION_RATE):]
@@ -402,21 +411,22 @@ def main():
 
     if args.mode == "test":
         # val_img_names = img_names[:int(N * VALIDATION_RATE)]
-        val_img_names = img_names[:4]
+        val_img_names = sorted(img_names)[0:400]
         
         print("====> Test images total num = ", len(val_img_names))
 
-        accuracy, iou = test(model, args.img_dir, val_img_names, img_to_encodings)
+        accuracy, iou, filtered_accu, filtered_iou = test(model, args.img_dir, val_img_names, img_to_encodings)
         print("========> Test: Accuracy = %.4f, IoU = %.4f" % (accuracy, iou))
+        print("========> Filtered: Accuracy = %.4f, IoU = %.4f" % (filtered_accu, filtered_iou))
 
 # restore the classifier for ship vs land from checkpoints
 def read_saved_classifier():
-    model = Classifier()
+    model = Classifier(num_classes=7)
     checkpoint_dir = './ship_land_classifier/checkpoints'
     checkpoint = tf.train.Checkpoint(model=model)
     manager = tf.train.CheckpointManager(checkpoint, checkpoint_dir, max_to_keep=3)
     print("Reading checkpoints")
-    checkpoint.restore(manager.latest_checkpoint)
+    checkpoint.restore(manager.latest_checkpoint).expect_partial()
     return model
 
 if __name__ == '__main__':

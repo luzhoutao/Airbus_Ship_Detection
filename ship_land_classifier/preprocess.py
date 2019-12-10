@@ -7,8 +7,13 @@ import random
 
 def _read_png(file_name):
     im = Image.open(file_name)
+    if im.getbands()!=('R','G','B'):
+        # convert 'P' or 'RGBA' to 'RGB' images
+        im = im.convert('RGB')
     im.thumbnail((256, 256), Image.ANTIALIAS) # resize to (256, 256)
-    return np.reshape(np.array(im.getdata())[:,:3], (256, 256, 3))
+    tmp = np.array(im.getdata())
+    assert tmp.shape == (65536, 3), "shape is %s, file is %s" % (str(tmp.shape), file_name)
+    return np.reshape(tmp, (256, 256, 3))
 
 
 def get_data(img_names):
