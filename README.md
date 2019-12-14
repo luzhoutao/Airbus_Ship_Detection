@@ -1,10 +1,10 @@
 # Airbus_Ship_Detection
 
-- finished data decoding, precessing 
+- finished data decoding, pre-processing 
 - finished model building 
 - finished model training and test
 - finished visualization
-
+-------------------------------------
 - have experimented with separating each image into smaller sub-images
 - have experimented with U-Net model
 - have experimented with different loss functions
