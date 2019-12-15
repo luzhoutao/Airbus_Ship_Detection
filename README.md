@@ -1,4 +1,4 @@
-# Airbus_Ship_Detection
+# Ship Detection in Satellite Images Using U-Net-Based Architectures
 
 ## Progress
 - finished data decoding, pre-processing 
