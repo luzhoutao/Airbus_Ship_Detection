@@ -17,7 +17,7 @@
 This master branch contains the baseline U-Net model and the CNN classifier. For the 2U-Net model, check the branch 2U-Net.
 
 ## How to run
-As the requirement for focal lossm, please make sure installing `tensorflow_addons` using the following command:
+As the requirement for focal loss, please make sure installing `tensorflow_addons` using the following command:
 
 ```bash
 pip install tensorflow-addons
