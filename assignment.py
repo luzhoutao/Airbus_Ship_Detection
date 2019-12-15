@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 
 import tensorflow as tf
+import tensorflow_addons as tfa
 
 import os
 import numpy as np
@@ -61,7 +62,6 @@ parser.add_argument('--device', type=str, default='GPU:0' if gpu_available else 
 parser.add_argument('--out-dir', type=str, default='img',
                     help='store the images from visualization')
 
-
 args = parser.parse_args()
 
 ## --------------------------------------------------------------------------------------
@@ -80,6 +80,8 @@ class Model(tf.keras.Model):
         self.dropout_rate = args.dropout_rate
         self.learning_rate = args.learn_rate
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
+
+        self.focal_loss = tfa.losses.SigmoidFocalCrossEntropy()
 
         # conv1
         self.conv1_1 = tf.keras.layers.Conv2D(8, 3, activation='relu', padding='same')
@@ -131,7 +133,7 @@ class Model(tf.keras.Model):
         self.conv9_1 = tf.keras.layers.Conv2D(8, 3, activation='relu', padding='same')
         self.conv9_2 = tf.keras.layers.Conv2D(8, 3, activation='relu', padding='same')
 
-        self.out = tf.keras.layers.Conv2D(self.num_class, 1, activation='sigmoid', padding='same')  # kernal_size = 1
+        self.out = tf.keras.layers.Conv2D(self.num_class, 1, activation='sigmoid', padding='same')  # kernel_size = 1
 
     def call(self, inputs):
         """
@@ -167,28 +169,22 @@ class Model(tf.keras.Model):
 
         # conv7
         up7 = self.up7(conv6)
-        # up7 = tf.keras.layers.Conv2D(32, 2, activation='relu', padding='same')(up7)
         concat7 = self.concat7([conv3, up7])
         conv7 = self.conv7_2(self.conv7_1(concat7))
 
         # conv8
         up8 = self.up8(conv7)
-        # up8 = tf.keras.layers.Conv2D(16, 2, activation='relu', padding='same')(up8)
         concat8 = self.concat8([conv2, up8])
         conv8 = self.conv8_2(self.conv8_1(concat8))
 
         # conv9
         up9 = self.up9(conv8)
-        # up9 = tf.keras.layers.Conv2D(8, 2, activation='relu', padding='same')(up9) #todo
         concat9 = self.concat9([conv1,up9])
         conv9 = self.conv9_2(self.conv9_1(concat9))
 
-        # drop9   = tf.keras.layers.Dropout(self.dropout_rate)(conv9) #add an additional dropout here 
-        # conv9 = tf.keras.layers.Conv2D(2, 3, activation='relu', padding='same')(conv9)
         # conv10
         probs = self.out(conv9) #kernal_size = 1
         return probs
-		
 
     def loss(self, probs, labels):
         labels = tf.dtypes.cast(labels, tf.float32)
@@ -196,13 +192,22 @@ class Model(tf.keras.Model):
         loss = tf.keras.losses.binary_crossentropy(labels, probs, from_logits=False)
         ave_loss = tf.reduce_mean(loss)
         return ave_loss
+
     def dice_loss(self, probs, labels):
         labels = tf.dtypes.cast(labels, tf.float32)
         probs = tf.dtypes.cast(probs, tf.float32)
         numerator = 2 * tf.reduce_sum(labels * probs, axis=[1, 2])
         denominator = tf.reduce_sum(labels + probs, axis=[1, 2])
-        return 1 - (numerator + 1) / (denominator + 1)
+        return tf.reduce_mean(1 - (numerator + 1) / (denominator + 1))
 
+    def weighted_loss(self, probs, labels, beta=2):
+        labels = tf.dtypes.cast(labels, tf.float32)
+        probs = tf.dtypes.cast(probs, tf.float32)
+        # see https://github.com/tensorflow/tensorflow/blob/r1.10/tensorflow/python/keras/backend.py#L3525
+        probs = tf.clip_by_value(probs, tf.keras.backend.epsilon(), 1 - tf.keras.backend.epsilon())
+        logits = tf.math.log(probs / (1 - probs))
+        loss = tf.nn.weighted_cross_entropy_with_logits(labels, logits, beta) / 11
+        return tf.reduce_mean(loss)
 
     def accuracy(self, probs, labels):
         '''
@@ -215,7 +220,7 @@ class Model(tf.keras.Model):
         iou = tf.reduce_mean(IoU(probs[:, :, :, 0], labels[:, :, :, 0])).numpy()
         return accu, iou
 
-		
+
 def train(model, img_dir, train_img_names, img_to_encodings, manager):
     num_inputs = len(train_img_names)
     steps = int(num_inputs / model.batch_size)
@@ -230,12 +235,11 @@ def train(model, img_dir, train_img_names, img_to_encodings, manager):
 
         with tf.GradientTape() as tape:
             probs = model(inputs)
-            # loss = model.loss(probs, labels)
             loss = model.dice_loss(probs, labels)
-			
+
             gradients = tape.gradient(loss, model.trainable_variables)
             model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-				
+
         if i % args.log_every == 0:
             train_acc, train_iou = model.accuracy(probs, labels)
             r = tf.reduce_mean(recall(probs, labels)).numpy()
@@ -310,6 +314,7 @@ def test(model, img_dir, test_img_names, img_to_encodings):
         log_iou.append(iou)
         filtered_accus.append(filtered_accuracy)
         filtered_ious.append(filtered_iou)
+
     return np.mean(log_accu), np.mean(log_iou), np.mean(filtered_accus), np.mean(filtered_ious)
 
 
@@ -327,7 +332,6 @@ def visualize_results(inputs, labels, outputs, out_dir=args.out_dir):
     # Save images to disk
     for i in range(0, len(inputs)):
         inputs_i = inputs[i]
-        # s = args.out_dir+'/'+str(i)+'.png'
         s = out_dir+'/'+'input' + str(i)+'.png'
         imwrite(s, inputs_i)
 
@@ -343,45 +347,13 @@ def visualize_results(inputs, labels, outputs, out_dir=args.out_dir):
         outputs_i = outputs_i.astype(np.uint8)
         s =  out_dir+'/'+'output' + str(i)+'.png'
         assert outputs_i.shape==(768,768,3)
-        # print('output sum: ', np.sum(outputs_i))
         imwrite(s, outputs_i)
 
-
-
-
-    
-
-def balance_sample_dataset(img_to_encodings):
-    empty_images, nonempty_images = [], []
-
-    for name, encodings in img_to_encodings.items():
-        if len(encodings) == 1 and encodings[0] == "\n":
-            empty_images.append(name)
-        else:
-            nonempty_images.append(name)
-
-    img_names = []
-    img_names.extend(random.sample(empty_images, len(nonempty_images)))
-    img_names.extend(nonempty_images)
-
-    return img_names
-#when use the above func, shows error. so hacked it. 
-def balance_sample_dataset1(img_to_encodings):
-    nonempty_images = []
-
-    for name, encodings in img_to_encodings.items():
-        
-        nonempty_images.append(name)
-
-    return nonempty_images
-
 def main():
-    VALIDATION_RATE = 0.01
+    VALIDATION_RATE = 0.1
     #step1: get the training data and testing data
-    # img_to_encodings = read_encodings(args.encoding_file)
-    # img_names = balance_sample_dataset(img_to_encodings)
     img_to_encodings = read_nonempty_img_to_encodings(args.encoding_file)
-    img_names = balance_sample_dataset1(img_to_encodings)
+    img_names = list(img_to_encodings.keys())
     N = len(img_names)
 
     # step2: initialize and train the model
@@ -406,8 +378,9 @@ def main():
             train(model, args.img_dir, train_img_names, img_to_encodings, manager)
 
         #step3: test the model
-        accuracy, iou = test(model, args.img_dir, val_img_names, img_to_encodings)
-        print("========> Validation: Accuracy = %.4f, IoU = %.4f" % (accuracy, iou))
+        accuracy, iou, filtered_accu, filtered_iou = test(model, args.img_dir, val_img_names, img_to_encodings)
+        print("========> Test: Accuracy = %.4f, IoU = %.4f" % (accuracy, iou))
+        print("========> Filtered: Accuracy = %.4f, IoU = %.4f" % (filtered_accu, filtered_iou))
 
     if args.mode == "test":
         # val_img_names = img_names[:int(N * VALIDATION_RATE)]
