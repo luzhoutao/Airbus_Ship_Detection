@@ -36,4 +36,4 @@ python assignment.py --mode train --encoding-file [PATH TO MASK_ENCODING_FILE] -
 ```bash
 python assignment.py --mode test --encoding-file [PATH TO MASK_ENCODING FILE] --img-dir [PATH TO IMAGE DIR] --out-dir [PATH TO VISUAL RESULT] --batch-size 4
 ```
-
+*Note: there is a small dataset to test the functionalities. To use it, just leave* `--encoding-file` *and* `--img-dir` *unchanged*.
